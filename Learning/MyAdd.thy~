@@ -1,0 +1,18 @@
+theory MyAdd
+imports Main
+begin
+
+datatype nat = zero | Suc nat
+
+fun add :: "nat \<Rightarrow> nat \<Rightarrow> nat" where
+"add zero n = n" |
+"add (Suc m) n = Suc (add m n)"
+
+lemma add_02: "add m zero = m"
+  apply(induction m)
+  apply(auto)
+  done
+
+thm add_02 (*Very nice theorem*)
+
+end

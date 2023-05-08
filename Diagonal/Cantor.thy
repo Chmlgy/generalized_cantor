@@ -26,6 +26,7 @@ proof -
   thus "False" using no_fixed_point by simp
 qed
 
+
 (*
   T x T ---- f ----> Y
     ^                |
@@ -50,6 +51,34 @@ theorem "Generalized_Cantor":
 qed*)
   apply(rule Abstracted_Cantor[of f alpha "\<lambda>x. x" "\<lambda>x. x"])
   apply(auto simp add: no_fixed_point surjectivity)
+  done
+
+
+(*
+  T ---- f ----> \<P>(T)
+*)
+fun not :: "bool \<Rightarrow> bool" where
+"not True = False" |
+"not False = True"
+
+theorem "Classic_Cantor":
+  fixes f :: "'a \<Rightarrow> 'a \<Rightarrow> bool"
+  assumes surjectivity: "surj f"
+  shows "False"
+  apply(rule Generalized_Cantor[of f not])
+  apply(auto simp add: surjectivity)
+  done
+
+
+(*
+  |\<nat>| < |\<P>(\<nat>)|
+*)
+theorem "Classic_Nat_Cantor":
+  fixes f :: "nat \<Rightarrow> nat \<Rightarrow> bool"
+  assumes surjectivity: "surj f"
+  shows "False"
+  apply(rule Classic_Cantor[of f])
+  apply(simp add: surjectivity)
   done
 
 end

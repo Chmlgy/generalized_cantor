@@ -1,7 +1,7 @@
 theory Cantor imports Main HOL.Fun
 begin
 
-(*
+(* 1.
   S x T ---- f ----> Y
     ^                |
     |                |
@@ -27,7 +27,7 @@ proof -
 qed
 
 
-(*
+(* 2.
   T x T ---- f ----> Y
     ^                |
     |                |
@@ -54,7 +54,7 @@ qed*)
   done
 
 
-(*
+(* 3.
   T ---- f ----> \<P>(T)
 *)
 fun not :: "bool \<Rightarrow> bool" where
@@ -70,7 +70,7 @@ theorem "Classic_Cantor":
   done
 
 
-(*
+(* 4.
   |\<nat>| < |\<P>(\<nat>)|
 *)
 theorem "Classic_Nat_Cantor":

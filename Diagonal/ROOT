@@ -1,0 +1,6 @@
+session Diagonal = HOL +
+  options [document = pdf, document_output = "output"]
+  theories
+    Cantor
+  document_files
+    "root.tex"

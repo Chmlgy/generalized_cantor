@@ -40,13 +40,16 @@ theorem "Generalized_Cantor":
   assumes surjectivity: "surj f"
   and no_fixed_point: "\<forall>y. alpha y \<noteq> y"
   shows "False"
-proof -
+(*proof -
   from surjectivity have "\<forall>h :: 'a \<Rightarrow> 'b. \<exists>t. h = f t" by (auto simp add: surj_def)
   hence "\<exists>t. (alpha \<circ> (\<lambda>t'. f t' t')) = f t" by simp
   then obtain t0 where "(alpha \<circ> (\<lambda>t'. f t' t')) = f t0" ..
   hence "(alpha \<circ> (\<lambda>t'. f t' t')) t0 = f t0 t0" by (rule arg_cong)
   hence "alpha (f t0 t0) = f t0 t0" by simp
   thus "False" using no_fixed_point by simp
-qed
+qed*)
+  apply(rule Abstracted_Cantor[of f alpha "\<lambda>x. x" "\<lambda>x. x"])
+  apply(auto simp add: no_fixed_point surjectivity)
+  done
 
 end

@@ -1,4 +1,4 @@
-theory Cantor imports Main HOL.Fun
+theory Cantor imports Complex_Main
 begin
 
 (* 1.
@@ -41,14 +41,6 @@ theorem "Generalized_Cantor":
   assumes surjectivity: "surj f"
   and no_fixed_point: "\<forall>y. alpha y \<noteq> y"
   shows "False"
-(*proof -
-  from surjectivity have "\<forall>h :: 'a \<Rightarrow> 'b. \<exists>t. h = f t" by (auto simp add: surj_def)
-  hence "\<exists>t. (alpha \<circ> (\<lambda>t'. f t' t')) = f t" by simp
-  then obtain t0 where "(alpha \<circ> (\<lambda>t'. f t' t')) = f t0" ..
-  hence "(alpha \<circ> (\<lambda>t'. f t' t')) t0 = f t0 t0" by (rule arg_cong)
-  hence "alpha (f t0 t0) = f t0 t0" by simp
-  thus "False" using no_fixed_point by simp
-qed*)
   apply(rule Abstracted_Cantor[of f alpha "\<lambda>x. x" "\<lambda>x. x"])
   apply(auto simp add: no_fixed_point surjectivity)
   done
@@ -71,7 +63,7 @@ theorem "Classic_Cantor":
 
 
 (* 4.
-  |\<nat>| < |\<P>(\<nat>)|
+  |\<nat>| < |\<P>(\<nat>)|                                                                                    
 *)
 theorem "Classic_Nat_Cantor":
   fixes f :: "nat \<Rightarrow> nat \<Rightarrow> bool"
@@ -80,5 +72,35 @@ theorem "Classic_Nat_Cantor":
   apply(rule Classic_Cantor[of f])
   apply(simp add: surjectivity)
   done
+
+
+(* 5.
+  Contrapositive of Cantor's Theorem:
+    If Y is a set and there exists a set T together with a function f: T x T \<longrightarrow> Y
+    such that all functions g: T \<longrightarrow> Y are representable by f, i.e. there exists
+    a t in T such that g = f t, then all functions \<alpha>: Y \<longrightarrow> Y admits a fixed point.
+*)
+theorem "Contrapositive_Cantor":
+  fixes f :: "'a \<Rightarrow> 'a \<Rightarrow> 'b"
+  assumes surjectivity: "surj f"
+  shows "\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y"
+  by (meson Generalized_Cantor surjectivity)
+
+
+(* 6.
+  All endomorphisms admitting a fixed point means the set has only one element.
+*)
+lemma "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<longleftrightarrow> (\<forall>a b :: 'b. a = b)"
+  apply(auto)
+  (*TODO: \<longrightarrow>*)
+
+
+(*
+Possible directions:
+  Prove that real numbers and (nat \<Rightarrow> bool)s have the same cardinality by Cantor-Schroder-Bernstein
+
+  Using Generalized_Cantor, show Russel's paradox and existence of non-r.e. language
+*)
+typ real
 
 end

@@ -21,7 +21,6 @@ proof -
   hence "\<exists>t. (\<alpha> \<circ> (\<lambda>t'. f (\<beta> t') t')) = f t" by simp
   then obtain t0 where "(\<alpha> \<circ> (\<lambda>t'. f (\<beta> t') t')) = f t0" ..
   hence "(\<alpha> \<circ> (\<lambda>t'. f (\<beta> t') t')) (\<beta>_c t0) = f t0 (\<beta>_c t0)" by (rule arg_cong)
-  (*hence "\<alpha> (f (\<beta> (\<beta>_c t0)) (\<beta>_c t0)) = f t0 (\<beta>_c t0)" by simp*)
   hence "\<alpha> (f t0 (\<beta>_c t0)) = f t0 (\<beta>_c t0)" using right_inverse by simp
   thus "False" using no_fixed_point by simp
 qed
@@ -90,9 +89,10 @@ theorem "Contrapositive_Cantor":
 (* 6.
   All endomorphisms admitting a fixed point means the set has only one element.
 *)
+(* TODO:
 lemma "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<longleftrightarrow> (\<forall>a b :: 'b. a = b)"
   apply(auto)
-  (*TODO: \<longrightarrow>*)
+*)
 
 
 (*

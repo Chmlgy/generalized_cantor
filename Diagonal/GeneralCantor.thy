@@ -3,7 +3,8 @@ section \<open> Generalized Cantor's Theorem and Instances  \<close>
 theory GeneralCantor imports Complex_Main
 begin
 
-(* 1.
+text \<open>
+  1. The most abstracted version of Cantor's theorem.
   S x T ---- f ----> Y
     ^                |
     |                |
@@ -11,7 +12,7 @@ begin
     |                |
     |                v
     T   ---- g ----> Y
-*)
+\<close>
 theorem "Abstracted_Cantor":
   fixes f :: "'b \<Rightarrow> 'a \<Rightarrow> 'c" and \<alpha> :: "'c \<Rightarrow> 'c" and \<beta> :: "'a \<Rightarrow> 'b" and \<beta>_c :: "'b \<Rightarrow> 'a"
   assumes surjectivity: "surj f"
@@ -28,7 +29,9 @@ proof -
 qed
 
 
-(* 2.
+text \<open>
+  2. An instance of the above theorem, where S = T and \<beta> = Id. Still a quite general version
+  of Cantor's theorem.
   T x T ---- f ----> Y
     ^                |
     |                |
@@ -36,7 +39,7 @@ qed
     |                |
     |                v
     T   ---- g ----> Y
-*)
+\<close>
 theorem "Generalized_Cantor":
   fixes alpha :: "'b \<Rightarrow> 'b" and f :: "'a \<Rightarrow> 'a \<Rightarrow> 'b"
   assumes surjectivity: "surj f"
@@ -47,9 +50,11 @@ theorem "Generalized_Cantor":
   done
 
 
-(* 3.
+text \<open>
+  3. An instance of the above version of Cantor's theorem, where 'b = bool and \<alpha> = \<not>.
+  Entailing the fact that no surjective functions exists from a set to its power set.
   T ---- f ----> \<P>(T)
-*)
+\<close>
 fun not :: "bool \<Rightarrow> bool" where
 "not True = False" |
 "not False = True"
@@ -63,9 +68,10 @@ theorem "Classic_Cantor":
   done
 
 
-(* 4.
-  |\<nat>| < |\<P>(\<nat>)|                                                                                    
-*)
+text \<open>
+  4. An instance of the above theorem. With the set 'a being natural numbers.
+ |\<P>(\<nat>)| > |\<nat>|                                                                                   
+\<close>
 theorem "Classic_Nat_Cantor":
   fixes f :: "nat \<Rightarrow> nat \<Rightarrow> bool"
   assumes surjectivity: "surj f"
@@ -75,12 +81,12 @@ theorem "Classic_Nat_Cantor":
   done
 
 
-(* 5.
-  Contrapositive of Cantor's Theorem:
-    If Y is a set and there exists a set T together with a function f: T x T \<longrightarrow> Y
-    such that all functions g: T \<longrightarrow> Y are representable by f, i.e. there exists
-    a t in T such that g = f t, then all functions \<alpha>: Y \<longrightarrow> Y admits a fixed point.
-*)
+text \<open>
+  5. Contrapositive of Cantor's Theorem:
+  If Y is a set and there exists a set T together with a function f: T x T \<longrightarrow> Y
+  such that all functions g: T \<longrightarrow> Y are representable by f, i.e. there exists
+  a t in T such that g = f t, then all functions \<alpha>: Y \<longrightarrow> Y admits a fixed point.
+\<close>
 theorem "Contrapositive_Cantor":
   fixes f :: "'a \<Rightarrow> 'a \<Rightarrow> 'b"
   assumes surjectivity: "surj f"
@@ -88,13 +94,47 @@ theorem "Contrapositive_Cantor":
   by (meson Generalized_Cantor surjectivity)
 
 
-(* 6.
-  All endomorphisms admitting a fixed point means the set has only one element.
-*)
+text \<open> 
+  6. All endomorphisms admitting a fixed point means the set has only one element.
+  Still, we will keep the definition of fixed points and do not make assumptions on the cardinality
+  of Y. The reason being that fixed points easily generalize to categories unlike cardinality.
+\<close>
 (* TODO:
 lemma "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<longleftrightarrow> (\<forall>a b :: 'b. a = b)"
   apply(auto)
 *)
+
+text \<open>
+ 7. |\<real>| = |\<P>(\<nat>)|
+\<close>
+
+text \<open>
+  7.1 Show that \<exists>f s.t. f: \<real> \<longlongrightarrow> \<P>(\<rat>) and f is injective.
+\<close>
+definition cut_set :: "real \<Rightarrow> (rat \<Rightarrow> bool)" where
+"cut_set r = (\<lambda>q. of_rat q < r)"
+
+lemma "contra_inj_cut_set": "\<forall>x y :: real. x \<noteq> y \<longrightarrow> cut_set x \<noteq> cut_set y"
+  by (metis cut_set_def linorder_less_linear of_rat_dense order_less_not_sym)
+
+lemma "inj_example_cut_set": "inj cut_set"
+  by (meson contra_inj_cut_set injI)
+
+lemma "\<exists>f :: real \<Rightarrow> (rat \<Rightarrow> bool). inj f"
+  by (meson inj_example_cut_set)
+
+
+text \<open>
+  7.2 Show that \<exists>f s.t. f: (nat => bool) => real and f is injective.
+\<close>
+definition seq_to_real :: "(nat \<Rightarrow> bool) \<Rightarrow> real" where
+"seq_to_real f = \<Sum>{1/(2^n) | n. f n = True}"
+
+value "seq_to_real (\<lambda>x. (if x = 1 then True else False))"
+
+lemma "contra_inj_seq_to_real": "\<forall>f h :: (nat \<Rightarrow> bool). f \<noteq> h \<longrightarrow> seq_to_real f \<noteq> seq_to_real h"
+
+lemma "\<exists>f :: (nat \<Rightarrow> bool) \<Rightarrow> real. inj f"
 
 
 (*

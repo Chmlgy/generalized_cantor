@@ -1,6 +1,6 @@
 section \<open> Generalized Cantor's Theorem and Instances  \<close>
 
-theory GeneralCantor imports Complex_Main
+theory GeneralCantor imports Complex_Main "HOL-Analysis.Analysis"
 begin
 
 text \<open>
@@ -104,12 +104,14 @@ lemma "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<
   apply(auto)
 *)
 
+
 text \<open>
  7. |\<real>| = |\<P>(\<nat>)|
 \<close>
 
+
 text \<open>
-  7.1 Show that \<exists>f s.t. f: \<real> \<longlongrightarrow> \<P>(\<rat>) and f is injective.
+  7.1 Show that \<exists>f s.t. f: \<real> \<longlongrightarrow> \<P>(\<rat>) and f is injective. ==> |\<real>| \<le> 2^(\<aleph>_0)
 \<close>
 definition cut_set :: "real \<Rightarrow> (rat \<Rightarrow> bool)" where
 "cut_set r = (\<lambda>q. of_rat q < r)"
@@ -125,24 +127,80 @@ lemma "\<exists>f :: real \<Rightarrow> (rat \<Rightarrow> bool). inj f"
 
 
 text \<open>
-  7.2 Show that \<exists>f s.t. f: (nat => bool) => real and f is injective.
+  7.2 Show that \<exists>f s.t. f: (nat => bool) => real and f is surjective on [0, 1]. \<Longrightarrow> 2^(\<aleph>_0) \<ge> |[0,1]|
 \<close>
+(*A function that is surjective on real numbers between 0 and 1: *)
 definition seq_to_real :: "(nat \<Rightarrow> bool) \<Rightarrow> real" where
 "seq_to_real f = \<Sum>{1/(2^n) | n. f n = True}"
 
-value "seq_to_real (\<lambda>x. (if x = 1 then True else False))"
+(*Helper definition and functions to prove that the above function is surjective: *)
+(*A function that returns the most significant decimal binary digit for a real number between 0 and 1: *)
+definition most_sig_bdig :: "real \<Rightarrow> nat" where
+"most_sig_bdig x = Min {n. 1/(2^n) < x}" 
 
-lemma "contra_inj_seq_to_real": "\<forall>f h :: (nat \<Rightarrow> bool). f \<noteq> h \<longrightarrow> seq_to_real f \<noteq> seq_to_real h"
+definition bool_mult :: "bool \<Rightarrow> real \<Rightarrow> real" where
+"bool_mult b x = (if b = False then 0 else x)"
 
-lemma "\<exists>f :: (nat \<Rightarrow> bool) \<Rightarrow> real. inj f"
+(*A function that expands a real number between 0 and 1 to its binary representation*)
+definition binary_remainder :: "(real \<Rightarrow> nat \<Rightarrow> bool) \<Rightarrow> real \<Rightarrow> nat \<Rightarrow> real set" where
+"binary_remainder bs x n = {bool_mult (bs x k)  1/(2^k) | k. 1 < k \<and> k < n}"
+
+lemma [fundef_cong]: assumes "x = x'" and "n = n'" and "\<And>k. k < n \<Longrightarrow> bs x k = bs' x k" shows "binary_remainder bs x n = binary_remainder bs' x' n'"
+  using assms unfolding binary_remainder_def
+  by force
+
+fun binary_sequence :: "real \<Rightarrow> nat \<Rightarrow> bool" where
+"binary_sequence x 0 = (if most_sig_bdig x > 1 then False else True)" |
+binseq_rem: "binary_sequence x (Suc n) = (if most_sig_bdig (x - \<Sum>(binary_remainder binary_sequence x n)) > Suc n 
+                              then False else True)"
+
+lemma binseq_no_rem: "binary_sequence x (Suc n) = (if most_sig_bdig (x - \<Sum>{bool_mult (binary_sequence x k)  1/(2^k) | k. 1 < k \<and> k < n}) > Suc n 
+                              then False else True)"
+  apply(simp add: binary_remainder_def)
+  done
+
+declare binseq_rem [simp del]
+declare binseq_no_rem [simp add]
+
+find_theorems "Sum"
+
+(* TODO:
+lemma "\<forall>r :: real. 0 < r \<and> r < 1 \<longrightarrow> (\<exists>f :: nat \<Rightarrow> bool. seq_to_real f = r)"
+*)
+
+
+text \<open>
+  7.3 Show that \<exists>f s.t. f: (0, 1) => real and f is surjective. f x = tan(\<pi>x - \<pi>/2). ==> |(0, 1)| \<le> |\<real>|
+\<close>
+definition fitted_tan :: "real \<Rightarrow> real" where
+"fitted_tan x = tan (pi*x - pi/2)"
+
+definition fitted_arctan :: "real \<Rightarrow> real" where
+"fitted_arctan x = (arctan x + pi/2) / pi"
+
+lemma fitted_arctan: "0 < fitted_arctan y \<and> fitted_arctan y < 1 \<and> fitted_tan (fitted_arctan y) = y"
+  unfolding fitted_arctan_def fitted_tan_def
+  by (smt (verit) arctan divide_less_eq_1_pos divide_pos_pos field_sum_of_halves nonzero_mult_div_cancel_left times_divide_eq_right)
+
+lemma fitted_reverse [simp]: "\<forall>y. fitted_tan (fitted_arctan y) = y"
+  unfolding fitted_arctan_def fitted_tan_def
+  by (simp add: arctan)
+
+lemma fitted_surj [simp]: "\<forall>r. \<exists>x. fitted_tan x = r"
+  using fitted_reverse by blast
+  
+lemma "fitted_tan ` {r. 0 < r \<and> r < 1} = UNIV"
+  using fitted_arctan fitted_surj image_iff by fastforce
 
 
 (*
 Possible directions:
-  Prove that real numbers and (nat \<Rightarrow> bool)s have the same cardinality by Cantor-Schroder-Bernstein
+  Prove that real numbers and (nat \<Rightarrow> bool)s have the same cardinality
 
-  Using Generalized_Cantor, show Russel's paradox and existence of non-r.e. language
+  Using Generalized_Cantor, show Russel's paradox
+
+  Model Turing machines and languages. Show that there are more languages than Turing machines \<longrightarrow>
+  hence prove the existence of non-r.e. languages. Derive the Halting problem.
 *)
-typ real
 
 end

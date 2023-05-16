@@ -1,6 +1,6 @@
 section \<open> Generalized Cantor's Theorem and Instances  \<close>
 
-theory GeneralCantor imports Complex_Main
+theory GeneralCantor imports Complex_Main "HOL-Analysis.Analysis" "HOL-ZF.HOLZF"
 begin
 
 text \<open>
@@ -32,10 +32,10 @@ qed
 text \<open>
   2. An instance of the above theorem, where S = T and \<beta> = Id. Still a quite general version
   of Cantor's theorem.
-  T x T ---- f ----> Y
+  T x T ---- f ----> Y    f x y = not elem x y
     ^                |
     |                |
- Diagonal          alpha  
+ Diagonal          alpha
     |                |
     |                v
     T   ---- g ----> Y
@@ -134,7 +134,6 @@ definition seq_to_real :: "(nat \<Rightarrow> bool) \<Rightarrow> real" where
 "seq_to_real f = \<Sum>{1/(2^n) | n. f n = True}"
 
 (*Helper definition and functions to prove that the above function is surjective: *)
-
 (*A function that returns the most significant decimal binary digit for a real number between 0 and 1: *)
 definition most_sig_bdig :: "real \<Rightarrow> nat" where
 "most_sig_bdig x = Min {n. 1/(2^n) < x}" 
@@ -143,18 +142,59 @@ definition bool_mult :: "bool \<Rightarrow> real \<Rightarrow> real" where
 "bool_mult b x = (if b = False then 0 else x)"
 
 (*A function that expands a real number between 0 and 1 to its binary representation*)
+definition binary_remainder :: "(real \<Rightarrow> nat \<Rightarrow> bool) \<Rightarrow> real \<Rightarrow> nat \<Rightarrow> real set" where
+"binary_remainder bs x n = {bool_mult (bs x k)  1/(2^k) | k. 1 < k \<and> k < n}"
+
+lemma [fundef_cong]: assumes "x = x'" and "n = n'" and "\<And>k. k < n \<Longrightarrow> bs x k = bs' x k" shows "binary_remainder bs x n = binary_remainder bs' x' n'"
+  using assms unfolding binary_remainder_def
+  by force
+
 fun binary_sequence :: "real \<Rightarrow> nat \<Rightarrow> bool" where
 "binary_sequence x 0 = (if most_sig_bdig x > 1 then False else True)" |
-"binary_sequence x (Suc n) = (if most_sig_bdig (x - \<Sum>{bool_mult (binary_sequence x k)  1/(2^k) | k. 1 < k \<and> k < n}) > Suc n 
+binseq_rem: "binary_sequence x (Suc n) = (if most_sig_bdig (x - \<Sum>(binary_remainder binary_sequence x n)) > Suc n 
                               then False else True)"
 
-lemma "\<forall>r :: real. 0 < r \<and> r \<le> 1 \<longrightarrow> (\<exists>f :: nat \<Rightarrow> bool. seq_to_real f = r)"
-  (*The idea is that `binary_sequence r` gives us a binary expansion of any r, and `seq_to_real (binary_sequence r)` gives back r
-    meaning `seq_to_real` is surjective, any r can be reached.*)
+lemma binseq_no_rem: "binary_sequence x (Suc n) = (if most_sig_bdig (x - \<Sum>{bool_mult (binary_sequence x k)  1/(2^k) | k. 1 < k \<and> k < n}) > Suc n 
+                              then False else True)"
+  apply(simp add: binary_remainder_def)
+  done
+
+declare binseq_rem [simp del]
+declare binseq_no_rem [simp add]
+
+find_theorems "Sum"
+
+(* TODO:
+lemma "\<forall>r :: real. 0 < r \<and> r < 1 \<longrightarrow> (\<exists>f :: nat \<Rightarrow> bool. seq_to_real f = r)"
+*)
 
 
 text \<open>
-  7.3 Show that \<exists>f s.t. f: (0, 1) => real and f is bijective. f x = tan(\<pi>x - \<pi>/2). ==> |(0, 1)| = |\<real>|
+  7.3 Show that \<exists>f s.t. f: (0, 1) => real and f is surjective. f x = tan(\<pi>x - \<pi>/2). ==> |(0, 1)| \<le> |\<real>|
+\<close>
+definition fitted_tan :: "real \<Rightarrow> real" where
+"fitted_tan x = tan (pi*x - pi/2)"
+
+definition fitted_arctan :: "real \<Rightarrow> real" where
+"fitted_arctan x = (arctan x + pi/2) / pi"
+
+lemma fitted_arctan: "0 < fitted_arctan y \<and> fitted_arctan y < 1 \<and> fitted_tan (fitted_arctan y) = y"
+  unfolding fitted_arctan_def fitted_tan_def
+  by (smt (verit) arctan divide_less_eq_1_pos divide_pos_pos field_sum_of_halves nonzero_mult_div_cancel_left times_divide_eq_right)
+
+lemma fitted_reverse [simp]: "\<forall>y. fitted_tan (fitted_arctan y) = y"
+  unfolding fitted_arctan_def fitted_tan_def
+  by (simp add: arctan)
+
+lemma fitted_surj [simp]: "\<forall>r. \<exists>x. fitted_tan x = r"
+  using fitted_reverse by blast
+  
+lemma "fitted_tan ` {r. 0 < r \<and> r < 1} = UNIV"
+  using fitted_arctan fitted_surj image_iff by fastforce
+
+
+text \<open>
+  8. Russel's Paradox
 \<close>
 
 
@@ -165,7 +205,7 @@ Possible directions:
   Using Generalized_Cantor, show Russel's paradox
 
   Model Turing machines and languages. Show that there are more languages than Turing machines \<longrightarrow>
-  hence prove the existence of non-r.e. languages.
+  hence prove the existence of non-r.e. languages. Derive the Halting problem.
 *)
 
 end

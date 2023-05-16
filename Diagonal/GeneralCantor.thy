@@ -1,6 +1,6 @@
 section \<open> Generalized Cantor's Theorem and Instances  \<close>
 
-theory GeneralCantor imports Complex_Main "HOL-Analysis.Analysis"
+theory GeneralCantor imports Complex_Main "HOL-Analysis.Analysis" "HOL-ZF.HOLZF"
 begin
 
 text \<open>
@@ -32,10 +32,10 @@ qed
 text \<open>
   2. An instance of the above theorem, where S = T and \<beta> = Id. Still a quite general version
   of Cantor's theorem.
-  T x T ---- f ----> Y
+  T x T ---- f ----> Y    f x y = not elem x y
     ^                |
     |                |
- Diagonal          alpha  
+ Diagonal          alpha
     |                |
     |                v
     T   ---- g ----> Y
@@ -108,7 +108,6 @@ lemma "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<
 text \<open>
  7. |\<real>| = |\<P>(\<nat>)|
 \<close>
-
 
 text \<open>
   7.1 Show that \<exists>f s.t. f: \<real> \<longlongrightarrow> \<P>(\<rat>) and f is injective. ==> |\<real>| \<le> 2^(\<aleph>_0)
@@ -191,6 +190,23 @@ lemma fitted_surj [simp]: "\<forall>r. \<exists>x. fitted_tan x = r"
   
 lemma "fitted_tan ` {r. 0 < r \<and> r < 1} = UNIV"
   using fitted_arctan fitted_surj image_iff by fastforce
+
+
+text \<open>
+  8. Russel's Paradox
+\<close>
+(*
+In the context of Generalized_Cantor g becomes the characteristic function of sets that are not
+members of themselves, i.e. g x = True iff Not (Elem x x).
+
+So, if there was a set R which included all the sets that are not members of themselves then,
+Elem R = g
+
+But such R cannot exist as Elem is not surjective, it cannot represent g, by Classic_Cantor.
+*)
+lemma "Russels's_Paradox": "surj Elem \<Longrightarrow> False"
+  apply (rule Classic_Cantor)
+  by simp
 
 
 (*

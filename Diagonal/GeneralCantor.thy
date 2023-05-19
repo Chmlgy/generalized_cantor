@@ -1,6 +1,8 @@
-section \<open> Generalized Cantor's Theorem and Instances  \<close>
+section \<open> Generalized Cantor's Theorem and Instances\<close>
 
-theory GeneralCantor imports Complex_Main "HOL-Analysis.Analysis" "HOL-ZF.HOLZF"
+theory GeneralCantor imports Complex_Main "HOL-Library.Countable" "HOL-Analysis.Analysis"
+  "HOL-ZF.HOLZF" "~~/afp-2023-05-17/thys/Universal_Turing_Machine/Turing"
+  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/HaltingProblems_K_H"
 begin
 
 text \<open>
@@ -8,7 +10,7 @@ text \<open>
   S x T ---- f ----> Y
     ^                |
     |                |
-(beta, Id)         alpha             S ---- beta_comp ----> T              beta \<circ> beta_comp = Id  
+(beta, Id)         alpha             S ---- beta_comp ----> T              beta \<circ> beta_comp = Id
     |                |
     |                v
     T   ---- g ----> Y
@@ -55,22 +57,18 @@ text \<open>
   Entailing the fact that no surjective functions exists from a set to its power set.
   T ---- f ----> \<P>(T)
 \<close>
-fun not :: "bool \<Rightarrow> bool" where
-"not True = False" |
-"not False = True"
-
 theorem "Classic_Cantor":
   fixes f :: "'a \<Rightarrow> 'a \<Rightarrow> bool"
   assumes surjectivity: "surj f"
   shows "False"
-  apply(rule Generalized_Cantor[of f not])
+  apply(rule Generalized_Cantor[of f Not])
   apply(auto simp add: surjectivity)
   done
 
 
 text \<open>
   4. An instance of the above theorem. With the set 'a being natural numbers.
- |\<P>(\<nat>)| > |\<nat>|                                                                                   
+ |\<P>(\<nat>)| > |\<nat>|
 \<close>
 theorem "Classic_Nat_Cantor":
   fixes f :: "nat \<Rightarrow> nat \<Rightarrow> bool"
@@ -126,14 +124,15 @@ lemma "\<exists>f :: real \<Rightarrow> (rat \<Rightarrow> bool). inj f"
 
 
 text \<open>
-  7.2 Show that \<exists>f s.t. f: (nat => bool) => real and f is surjective on [0, 1]. \<Longrightarrow> 2^(\<aleph>_0) \<ge> |[0,1]|
+  7.2 Show that \<exists>f s.t. f: (nat => bool) => real and f is surjective on [0, 1].
+       \<Longrightarrow> 2^(\<aleph>_0) \<ge> |[0,1]|
 \<close>
 (*A function that is surjective on real numbers between 0 and 1: *)
 definition seq_to_real :: "(nat \<Rightarrow> bool) \<Rightarrow> real" where
 "seq_to_real f = \<Sum>{1/(2^n) | n. f n = True}"
 
 (*Helper definition and functions to prove that the above function is surjective: *)
-(*A function that returns the most significant decimal binary digit for a real number between 0 and 1: *)
+(*A function that returns the most significant binary digit for a real number between 0 and 1: *)
 definition most_sig_bdig :: "real \<Rightarrow> nat" where
 "most_sig_bdig x = Min {n. 1/(2^n) < x}" 
 
@@ -144,24 +143,26 @@ definition bool_mult :: "bool \<Rightarrow> real \<Rightarrow> real" where
 definition binary_remainder :: "(real \<Rightarrow> nat \<Rightarrow> bool) \<Rightarrow> real \<Rightarrow> nat \<Rightarrow> real set" where
 "binary_remainder bs x n = {bool_mult (bs x k)  1/(2^k) | k. 1 < k \<and> k < n}"
 
-lemma [fundef_cong]: assumes "x = x'" and "n = n'" and "\<And>k. k < n \<Longrightarrow> bs x k = bs' x k" shows "binary_remainder bs x n = binary_remainder bs' x' n'"
+lemma [fundef_cong]:
+  assumes "x = x'" and "n = n'" and "\<And>k. k < n \<Longrightarrow> bs x k = bs' x k"
+  shows "binary_remainder bs x n = binary_remainder bs' x' n'"
   using assms unfolding binary_remainder_def
   by force
 
 fun binary_sequence :: "real \<Rightarrow> nat \<Rightarrow> bool" where
 "binary_sequence x 0 = (if most_sig_bdig x > 1 then False else True)" |
-binseq_rem: "binary_sequence x (Suc n) = (if most_sig_bdig (x - \<Sum>(binary_remainder binary_sequence x n)) > Suc n 
-                              then False else True)"
+binseq_rem: "binary_sequence x (Suc n) =
+  (if most_sig_bdig (x - \<Sum>(binary_remainder binary_sequence x n)) > Suc n
+   then False else True)"
 
-lemma binseq_no_rem: "binary_sequence x (Suc n) = (if most_sig_bdig (x - \<Sum>{bool_mult (binary_sequence x k)  1/(2^k) | k. 1 < k \<and> k < n}) > Suc n 
-                              then False else True)"
+lemma binseq_no_rem: "binary_sequence x (Suc n) =
+  (if most_sig_bdig (x - \<Sum>{bool_mult (binary_sequence x k)  1/(2^k) | k. 1 < k \<and> k < n}) > Suc n
+   then False else True)"
   apply(simp add: binary_remainder_def)
   done
 
 declare binseq_rem [simp del]
 declare binseq_no_rem [simp add]
-
-find_theorems "Sum"
 
 (* TODO:
 lemma "\<forall>r :: real. 0 < r \<and> r < 1 \<longrightarrow> (\<exists>f :: nat \<Rightarrow> bool. seq_to_real f = r)"
@@ -169,7 +170,8 @@ lemma "\<forall>r :: real. 0 < r \<and> r < 1 \<longrightarrow> (\<exists>f :: n
 
 
 text \<open>
-  7.3 Show that \<exists>f s.t. f: (0, 1) => real and f is surjective. f x = tan(\<pi>x - \<pi>/2). ==> |(0, 1)| \<le> |\<real>|
+  7.3 Show that \<exists>f s.t. f: (0, 1) => real and f is surjective. f x = tan(\<pi>x - \<pi>/2).
+      \<Longrightarrow> |(0, 1)| \<le> |\<real>|
 \<close>
 definition fitted_tan :: "real \<Rightarrow> real" where
 "fitted_tan x = tan (pi*x - pi/2)"
@@ -179,7 +181,8 @@ definition fitted_arctan :: "real \<Rightarrow> real" where
 
 lemma fitted_arctan: "0 < fitted_arctan y \<and> fitted_arctan y < 1 \<and> fitted_tan (fitted_arctan y) = y"
   unfolding fitted_arctan_def fitted_tan_def
-  by (smt (verit) arctan divide_less_eq_1_pos divide_pos_pos field_sum_of_halves nonzero_mult_div_cancel_left times_divide_eq_right)
+  by (smt (verit) arctan divide_less_eq_1_pos divide_pos_pos field_sum_of_halves
+      nonzero_mult_div_cancel_left times_divide_eq_right)
 
 lemma fitted_reverse [simp]: "\<forall>y. fitted_tan (fitted_arctan y) = y"
   unfolding fitted_arctan_def fitted_tan_def
@@ -209,14 +212,25 @@ lemma "Russels's_Paradox": "surj Elem \<Longrightarrow> False"
   by simp
 
 
+text \<open>
+  9. Turing Machines and the Halting Problem
+\<close>
+theorem "Halting_Problem":
+  assumes surjectivity: "surj TMC_has_num_res"
+  shows "False"
+  apply(rule Abstracted_Cantor[of TMC_has_num_res Not nat_list_to_tm tm_to_nat_list])
+  apply(auto simp add: surjectivity nat_list_to_tm_is_inv_of_tm_to_nat_list)
+  done
+
+
 (*
 Possible directions:
-  Prove that real numbers and (nat \<Rightarrow> bool)s have the same cardinality
+Prove that real numbers and (nat \<Rightarrow> bool)s have the same cardinality
 
-  Using Generalized_Cantor, show Russel's paradox
+Using Generalized_Cantor, show Russel's paradox
 
-  Model Turing machines and languages. Show that there are more languages than Turing machines \<longrightarrow>
-  hence prove the existence of non-r.e. languages. Derive the Halting problem.
+Model Turing machines and languages. Show that there are more languages than Turing machines \<longrightarrow>
+hence prove the existence of non-r.e. languages. Derive the Halting problem.
 *)
 
 end

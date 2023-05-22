@@ -1,8 +1,7 @@
 section \<open> Generalized Cantor's Theorem and Instances\<close>
 
 theory GeneralCantor imports Complex_Main "HOL-Library.Countable" "HOL-Analysis.Analysis"
-  "HOL-ZF.HOLZF" "~~/afp-2023-05-17/thys/Universal_Turing_Machine/Turing"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/HaltingProblems_K_H"
+  "HOL-ZF.HOLZF" "~~/afp-2023-05-17/thys/Universal_Turing_Machine/HaltingProblems_K_H"
 begin
 
 text \<open>
@@ -216,9 +215,9 @@ text \<open>
   9. Turing Machines and the Halting Problem
 \<close>
 theorem "Halting_Problem":
-  assumes surjectivity: "surj TMC_has_num_res"
+  assumes surjectivity: "surj TMC_has_num_list_res"
   shows "False"
-  apply(rule Abstracted_Cantor[of TMC_has_num_res Not nat_list_to_tm tm_to_nat_list])
+  apply(rule Abstracted_Cantor[of TMC_has_num_list_res Not nat_list_to_tm tm_to_nat_list])
   apply(auto simp add: surjectivity nat_list_to_tm_is_inv_of_tm_to_nat_list)
   done
 

@@ -96,10 +96,22 @@ text \<open>
   Still, we will keep the definition of fixed points and do not make assumptions on the cardinality
   of Y. The reason being that fixed points easily generalize to categories unlike cardinality.
 \<close>
-(* TODO:
-lemma "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<longleftrightarrow> (\<forall>a b :: 'b. a = b)"
-  apply(auto)
-*)
+lemma one_elem_to_fixed: "(\<forall>a b :: 'b. a = b) \<longrightarrow> (\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y)"
+  by auto
+
+lemma fixed_to_one_elem: "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<longrightarrow> (\<forall>a b :: 'b. a = b)"
+proof (rule ccontr)
+  note [[show_types]]
+  assume "\<not> ((\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<longrightarrow> (\<forall>a b :: 'b. a = b))"
+  hence contra: "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<and> (\<exists>a b :: 'b. a \<noteq> b)" by simp
+  from contra have fixed_point: "\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y" by simp
+  moreover
+  from contra have diff_elem: "\<exists>a b :: 'b. a \<noteq> b" by simp
+  then obtain a b where "a \<noteq> (b :: 'b)" by blast
+  hence "\<exists> f :: 'b \<Rightarrow> 'b. f = (\<lambda>x. (if x = a then b else a))" by fast
+  then obtain f where no_fixed_point: "\<forall>y :: 'b. f y \<noteq> y" by (metis \<open>(a::'b) \<noteq> (b::'b)\<close>)
+  thus "False" using fixed_point no_fixed_point by blast
+qed
 
 
 text \<open>

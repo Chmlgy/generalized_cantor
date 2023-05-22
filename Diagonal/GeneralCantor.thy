@@ -113,6 +113,13 @@ proof (rule ccontr)
   thus "False" using fixed_point no_fixed_point by blast
 qed
 
+theorem "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<longleftrightarrow> (\<forall>a b :: 'b. a = b)"
+proof -
+  have forward: "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<longrightarrow> (\<forall>a b :: 'b. a = b)" using fixed_to_one_elem by simp
+  have backward: "(\<forall>a b :: 'b. a = b) \<longrightarrow> (\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y)" using one_elem_to_fixed by simp
+  thus ?thesis using forward backward by metis
+qed
+
 
 text \<open>
  7. |\<real>| = |\<P>(\<nat>)|
@@ -234,8 +241,7 @@ theorem "Halting_Problem":
   done
 
 
-(*
-Possible directions:
+(* Possible directions:
 Prove that real numbers and (nat \<Rightarrow> bool)s have the same cardinality
 
 Using Generalized_Cantor, show Russel's paradox

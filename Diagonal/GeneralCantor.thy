@@ -33,7 +33,7 @@ qed
 text \<open>
   2. An instance of the above theorem, where S = T and \<beta> = Id. Still a quite general version
   of Cantor's theorem.
-  T x T ---- f ----> Y    f x y = not elem x y
+  T x T ---- f ----> Y
     ^                |
     |                |
  Diagonal          alpha
@@ -97,19 +97,17 @@ text \<open>
   of Y. The reason being that fixed points easily generalize to categories unlike cardinality.
 \<close>
 lemma one_elem_to_fixed: "(\<forall>a b :: 'b. a = b) \<longrightarrow> (\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y)"
-  by auto
+  by simp
 
 lemma fixed_to_one_elem: "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<longrightarrow> (\<forall>a b :: 'b. a = b)"
 proof (rule ccontr)
-  note [[show_types]]
   assume "\<not> ((\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<longrightarrow> (\<forall>a b :: 'b. a = b))"
   hence contra: "(\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y) \<and> (\<exists>a b :: 'b. a \<noteq> b)" by simp
   from contra have fixed_point: "\<forall>\<alpha> :: 'b \<Rightarrow> 'b. \<exists>y. \<alpha> y = y" by simp
-  moreover
   from contra have diff_elem: "\<exists>a b :: 'b. a \<noteq> b" by simp
   then obtain a b where "a \<noteq> (b :: 'b)" by blast
   hence "\<exists> f :: 'b \<Rightarrow> 'b. f = (\<lambda>x. (if x = a then b else a))" by fast
-  then obtain f where no_fixed_point: "\<forall>y :: 'b. f y \<noteq> y" by (metis \<open>(a::'b) \<noteq> (b::'b)\<close>)
+  then obtain f where no_fixed_point: "\<forall>y :: 'b. f y \<noteq> y" by (metis \<open>a \<noteq> (b::'b)\<close>)
   thus "False" using fixed_point no_fixed_point by blast
 qed
 
@@ -157,7 +155,7 @@ definition most_sig_bdig :: "real \<Rightarrow> nat" where
 definition bool_mult :: "bool \<Rightarrow> real \<Rightarrow> real" where
 "bool_mult b x = (if b = False then 0 else x)"
 
-(*A function that expands a real number between 0 and 1 to its binary representation*)
+(*A function that expands a real number between 0 and 1 to its binary representation: *)
 definition binary_remainder :: "(real \<Rightarrow> nat \<Rightarrow> bool) \<Rightarrow> real \<Rightarrow> nat \<Rightarrow> real set" where
 "binary_remainder bs x n = {bool_mult (bs x k)  1/(2^k) | k. 1 < k \<and> k < n}"
 
@@ -231,8 +229,11 @@ lemma "Russels's_Paradox": "surj Elem \<Longrightarrow> False"
 
 
 text \<open>
-  9. Turing Machines and the Halting Problem
+  9. Counting argument to show the existence of non-r.e. languages
 \<close>
+instance action :: countable
+  by countable_datatype
+
 theorem "Halting_Problem":
   assumes surjectivity: "surj TMC_has_num_list_res"
   shows "False"
@@ -241,13 +242,33 @@ theorem "Halting_Problem":
   done
 
 
-(* Possible directions:
-Prove that real numbers and (nat \<Rightarrow> bool)s have the same cardinality
+text \<open>
+  10. Turing Machines and the Halting Problem
+\<close>
+(*
+  p :: tprog0
 
-Using Generalized_Cantor, show Russel's paradox
-
-Model Turing machines and languages. Show that there are more languages than Turing machines \<longrightarrow>
-hence prove the existence of non-r.e. languages. Derive the Halting problem.
+  \<forall>p' :: tprog0.
+    (p halts on tape <p'> with result b :: bool) 
+    \<and> (p' halts on empty tape) \<longleftrightarrow> b
 *)
+definition "decides_halting p \<equiv> \<forall>p'::tprog0.
+  \<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list p'>)\<rbrace>
+    p
+  \<lbrace>\<lambda>tap. \<exists>kr lr n. tap = (Bk \<up> kr, <n::nat> @ Bk \<up> lr) \<and> (n=1 \<longleftrightarrow> TMC_has_num_list_res p' [])\<rbrace>"
+
+lemma aux_det: "TMC_yields_num_res p xs n \<Longrightarrow> TMC_yields_num_res p xs n' \<Longrightarrow> n=n'" sorry
+
+find_theorems TMC_yields_num_res
+find_theorems "_::tprog0" name: det 
+
+lemma "decides_halting p \<longleftrightarrow> (\<forall>p'. \<exists>n. TMC_yields_num_res p (tm_to_nat_list p') n \<and> (n=1 \<longleftrightarrow> TMC_has_num_list_res p' [] ))"
+  unfolding decides_halting_def Hoare_halt_def
+  apply auto
+  
+lemma "\<nexists>p. decides_halting p"
+  unfolding decides_halting_def
+  find_theorems name: HaltingProblems
+
 
 end

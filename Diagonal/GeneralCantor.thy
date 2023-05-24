@@ -234,7 +234,7 @@ text \<open>
 instance action :: countable
   by countable_datatype
 
-theorem "Halting_Problem":
+theorem "Non-r.e._Languages":
   assumes surjectivity: "surj TMC_has_num_list_res"
   shows "False"
   apply(rule Abstracted_Cantor[of TMC_has_num_list_res Not nat_list_to_tm tm_to_nat_list])

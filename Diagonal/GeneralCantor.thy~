@@ -245,48 +245,170 @@ theorem "Non-re_Languages":
 text \<open>
   10. Turing Machines and the Halting Problem
 \<close>
-definition "halts p ns \<equiv> \<lbrace>\<lambda>tap. tap = ([], <ns::nat list>)\<rbrace> p \<lbrace>\<lambda>tap. \<exists>l r ms. tap = (Bk \<up> l, <ms::nat list> @ Bk \<up> r)\<rbrace>"
+definition "halts p ns \<equiv> \<exists>Q. \<lbrace>\<lambda>tap. tap = ([], <ns::nat list>)\<rbrace> p \<lbrace>Q\<rbrace>"
 
-definition "decides_halting H \<equiv> composable_tm0 H \<and> (\<forall>(p::tprog0) (ns::nat list).
+lemma top_holds_for [intro, simp]: "top holds_for conf"
+  apply (cases conf)
+  by simp
+
+lemma halts_alt_def: "halts p ns = (\<exists>n. is_final (steps0 (1, [], <ns>) p n))"
+  unfolding halts_def Hoare_halt_def
+  by force
+
+lemma not_halts: "\<not> halts p ns \<longrightarrow> \<lbrace>\<lambda>tap. tap = ([], <ns::nat list>)\<rbrace> p \<up>"
+  using halts_def Hoare_unhalt_def reaches_final_def reaches_final_iff
+  by blast
+
+lemma not_halts_alt: "\<not> halts p ns \<longrightarrow> (\<nexists>n. is_final (steps0 (1, [], <ns>) p n))"
+  using halts_def Hoare_halt_def
+  by blast
+
+definition "decides_halting H \<equiv> (\<forall>(p::tprog0) (ns::nat list).
   \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list p, ns)>)\<rbrace>
-    H
+   H
   \<lbrace>\<lambda>tap. \<exists>(k::nat) (n::nat). tap = (Bk \<up> k, <(if halts p ns then 0::nat else 1::nat)>)\<rbrace>)"
 
-lemma not_halts: "\<not> \<lbrace>P\<rbrace> a \<lbrace>\<lambda>tap. \<exists>l r ms. tap = (Bk \<up> l, <ms::nat list> @ Bk \<up> r)\<rbrace> \<longrightarrow> \<lbrace>P\<rbrace> a \<up>"
-  sorry
+(*TODO: AFP entry should include this.*)
+lemma Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_aux: "\<lbrace>\<lambda>tap. tap = (cl', cl)\<rbrace> tm \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>tap. tap = (cl', cl)\<rbrace> mk_composable0 tm \<lbrace>Q\<rbrace>" 
+  unfolding Hoare_halt_def
+proof -
+  assume A: "\<forall>tap. (tap = (cl', cl)) \<longrightarrow> (\<exists>n. is_final (steps0 (1, tap) tm n) \<and> Q holds_for steps0 (1, tap) tm n)"
+  show "\<forall>tap. (tap = (cl', cl)) \<longrightarrow> (\<exists>n. is_final (steps0 (1, tap) (mk_composable0 tm) n) \<and> Q holds_for steps0 (1, tap) (mk_composable0 tm) n)"
+  proof
+    fix tap
+    show "(tap = (cl', cl)) \<longrightarrow> (\<exists>n. is_final (steps0 (1, tap) (mk_composable0 tm) n) \<and> Q holds_for steps0 (1, tap) (mk_composable0 tm) n)"
+    proof
+      assume "tap = (cl', cl)"
+      with A have "(\<exists>n. is_final (steps0 (1, tap) tm n) \<and> Q holds_for steps0 (1, tap) tm n)"
+        by auto
+      then obtain n where w_n: "is_final (steps0 (1, tap) tm n) \<and> Q holds_for steps0 (1, tap) tm n"
+        by blast
 
-theorem
+      with \<open>tap = (cl', cl)\<close> have w_n': "is_final (steps0 (1, cl', cl) tm n) \<and> Q holds_for steps0 (1, cl', cl) tm n" by auto
+
+      have "\<exists>n. is_final (steps0 (1, cl', cl) (mk_composable0 tm) n) \<and> Q holds_for steps0 (1, cl', cl) (mk_composable0 tm) n"
+
+      proof (cases "\<forall>stp. steps0 (1,cl',cl) (mk_composable0 tm) stp = steps0 (1,cl', cl) tm stp")
+        case True
+        with w_n' have "is_final (steps0 (1, cl', cl) (mk_composable0 tm) n) \<and> Q holds_for steps0 (1, cl', cl) (mk_composable0 tm) n" by auto
+        then show ?thesis by auto
+      next
+        case False
+        then have "\<exists>stp. steps0 (1, cl', cl) (mk_composable0 tm) stp \<noteq> steps0 (1, cl', cl) tm stp" by blast
+        then obtain stp where w_stp: "steps0 (1, cl', cl) (mk_composable0 tm) stp \<noteq> steps0 (1, cl', cl) tm stp" by blast
+
+        show "\<exists>m. is_final (steps0 (1, cl', cl) (mk_composable0 tm) m) \<and> Q holds_for steps0 (1, cl', cl) (mk_composable0 tm) m"
+        proof -
+          from w_stp have F0: "0 < stp \<and>
+                           (\<exists>fl fr.
+                                   snd (steps0 (1, cl', cl) tm stp) = (fl, fr) \<and>
+                                   (\<forall>i < stp. steps0 (1, cl', cl) (mk_composable0 tm) i = steps0 (1, cl', cl) tm i) \<and>
+                                   (\<forall>j > stp. steps0 (1, cl', cl) tm (j) = (0, fl, fr) \<and> 
+                                              steps0 (1, cl', cl) (mk_composable0 tm) j =(0, fl, fr)))"
+            by (rule mk_composable0_tm_at_most_one_diff')
+
+          from F0 have "0 < stp" by auto
+
+          from F0 obtain fl fr where w_fl_fr: "snd (steps0 (1, cl', cl) tm stp) = (fl, fr) \<and>
+                                   (\<forall>i < stp. steps0 (1, cl', cl) (mk_composable0 tm) i = steps0 (1, cl', cl) tm i) \<and>
+                                   (\<forall>j > stp. steps0 (1, cl', cl) tm (j) = (0, fl, fr) \<and> 
+                                              steps0 (1, cl', cl) (mk_composable0 tm) j =(0, fl, fr))" by blast
+
+
+          have "steps0 (1, cl', cl) tm (stp+1) = steps0 (1, cl', cl) tm  n"
+          proof (cases "steps0 (1, cl', cl) tm n")
+            case (fields fsn fln frn)
+            then have "steps0 (1, cl', cl) tm n = (fsn, fln, frn)" .
+            with w_n' have "is_final (fsn, fln, frn)" by auto
+            with is_final_eq have "fsn=0" by auto
+            with \<open>steps0 (1, cl', cl) tm n = (fsn, fln, frn)\<close>  have "steps0 (1, cl', cl) tm n = (0, fln, frn)" by auto
+
+            show "steps0 (1, cl', cl) tm (stp + 1) = steps0 (1, cl', cl) tm n"
+            proof (cases "n \<le> stp+1")
+              case True
+              then have "n \<le> stp + 1" .
+              show ?thesis
+              proof -
+                from \<open>steps0 (1, cl', cl) tm n = (0, fln, frn)\<close> and \<open>n \<le> stp + 1\<close> have "steps0 (1, cl', cl) tm (stp+1) = (0, fln, frn)"
+                  by (rule stable_config_after_final_ge_2')
+                with \<open>fsn=0\<close> and \<open>steps0 (1, cl', cl) tm n = (fsn, fln, frn)\<close> show ?thesis by auto
+              qed
+            next
+              case False
+              then have "stp + 1 \<le> n" by arith
+              show ?thesis
+              proof -
+                from w_fl_fr have "steps0 (1, cl', cl) tm (stp+1) = (0, fl, fr)" by auto
+                have "steps0 (1, cl', cl) tm n = (0, fl, fr)"
+                proof (rule stable_config_after_final_ge_2')
+                  from \<open>steps0 (1, cl', cl) tm (stp+1) = (0, fl, fr)\<close> show "steps0 (1, cl', cl) tm (stp+1) = (0, fl, fr)" by auto
+                next
+                  from \<open>stp + 1 \<le> n\<close> show "stp + 1 \<le> n" .
+                qed
+                with \<open>steps0 (1, cl', cl) tm (stp+1) = (0, fl, fr)\<close> show ?thesis by auto
+              qed
+            qed
+          qed
+
+          with w_n' have "is_final(steps0 (1, cl', cl) tm (stp+1)) \<and> Q holds_for steps0 (1, cl', cl) tm (stp+1)" by auto
+          moreover from w_fl_fr have "steps0 (1, cl', cl) tm (stp+1) = steps0 (1, cl', cl) (mk_composable0 tm) (stp+1)" by auto
+          ultimately have "is_final(steps0 (1, cl', cl) (mk_composable0 tm) (stp+1)) \<and> Q holds_for steps0 (1, cl', cl) (mk_composable0 tm) (stp+1)" by auto
+          then show ?thesis by blast
+        qed
+      qed
+      with \<open>tap = (cl', cl)\<close> show "\<exists>n. is_final (steps0 (1, tap) (mk_composable0 tm) n) \<and> Q holds_for steps0 (1, tap) (mk_composable0 tm) n" by auto
+    qed
+  qed
+qed
+
+theorem Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_generalized: "\<lbrace>P\<rbrace> tm \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> mk_composable0 tm \<lbrace>Q\<rbrace>"
+  using Hoare_halt_def Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_aux old.prod.exhaust by auto
+(*------------------------------------*)
+
+theorem "Halting_Problem":
   assumes "\<exists>dither::tprog0. \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <1::nat>)\<rbrace> dither \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <1::nat>)\<rbrace>
                           \<and> \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <0::nat>)\<rbrace> dither \<up>"
-  and "\<exists>copy::tprog0. (composable_tm0 copy)
-                    \<and> (\<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>)"
+  and "\<exists>copy::tprog0. \<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>"
 
   shows "\<nexists>H. decides_halting H"
 proof (rule ccontr)
-  note [[show_types]]
-  assume "\<not> (\<nexists>H::(action \<times> nat) list. decides_halting H)"
-  hence "\<exists>H::tprog0. decides_halting H" by simp
+  assume "\<not> (\<nexists>H::tprog0. decides_halting H)"
+  hence "\<exists>H. decides_halting H" by simp
 
-  then obtain H::tprog0 where h: "decides_halting H" ..
+  then obtain H'::tprog0 where "decides_halting H'" ..
+  then have "composable_tm0 (mk_composable0 H') \<and> (decides_halting (mk_composable0 H'))"
+    using Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_generalized composable_tm0_mk_composable0 decides_halting_def by blast
+  then have "\<exists>H. composable_tm0 H \<and> decides_halting H" using decides_halting_def by blast
+  then obtain H::tprog0 where h: "composable_tm0 H \<and> decides_halting H" ..
+
   from assms(1) obtain dither::tprog0 where d: "\<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <1::nat>)\<rbrace> dither \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <1::nat>)\<rbrace>
                                               \<and> \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <0::nat>)\<rbrace> dither \<up>" ..
-  from assms(2) obtain copy::tprog0 where c: "composable_tm0 copy
-                                            \<and> (\<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>)" ..
+
+  from assms(2) obtain copy'::tprog0 where "\<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy' \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>" ..
+  then have "composable_tm0 (mk_composable0 copy')
+          \<and> (\<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> mk_composable0 copy' \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>)"
+    using Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list composable_tm0_mk_composable0 by blast
+  then have "\<exists>copy. composable_tm0 copy
+          \<and> (\<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>)" by blast
+  then obtain copy::tprog0 where c: "composable_tm0 copy 
+                                  \<and> (\<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>)" ..
 
   let ?contra = "copy |+| H |+| dither"
   show "False"
   proof cases
     assume contra_halts: "halts ?contra (tm_to_nat_list ?contra)"
 
-    from c have p1: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> copy
-                 \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list ?contra, tm_to_nat_list ?contra)>)\<rbrace>" by simp
+    from c have p1: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace>
+                      copy
+                     \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list ?contra, tm_to_nat_list ?contra)>)\<rbrace>" by simp
     from h contra_halts have p2: "\<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list ?contra, tm_to_nat_list ?contra)>)\<rbrace>
                                    H
                                   \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <0::nat>)\<rbrace>" unfolding decides_halting_def by presburger
     from d have p3: "\<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <0::nat>)\<rbrace> dither \<up>" by simp
 
-    from c p1 p2 have p1_2: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> copy |+| H \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <0::nat>)\<rbrace>"
-      using Hoare_plus_halt by blast
+    from c p1 p2 have p1_2: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace>
+                              copy |+| H
+                             \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <0::nat>)\<rbrace>" using Hoare_plus_halt by blast
     from c h p1_2 p3 have "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> ?contra \<up>"
       using Hoare_plus_unhalt decides_halting_def seq_tm_composable by blast
 
@@ -296,15 +418,17 @@ proof (rule ccontr)
     hence contra_unhalts_unf: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> ?contra \<up>"
       using halts_def not_halts Hoare_halt_def by blast
 
-    from c have p1: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> copy
-                 \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list ?contra, tm_to_nat_list ?contra)>)\<rbrace>" by simp
+    from c have p1: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace>
+                      copy
+                     \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list ?contra, tm_to_nat_list ?contra)>)\<rbrace>" by simp
     from h contra_unhalts have p2: "\<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list ?contra, tm_to_nat_list ?contra)>)\<rbrace>
                                      H
                                     \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <1::nat>)\<rbrace>" unfolding decides_halting_def by presburger
     from d have p3: "\<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <1::nat>)\<rbrace> dither \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <1::nat>)\<rbrace>" by simp
 
-    from c p1 p2 have p1_2: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> copy |+| H \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <1::nat>)\<rbrace>"
-      using Hoare_plus_halt by blast
+    from c p1 p2 have p1_2: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace>
+                              copy |+| H
+                             \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <1::nat>)\<rbrace>" using Hoare_plus_halt by blast
     from c h p1_2 p3 have "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> ?contra \<lbrace>\<lambda>tap. \<exists>k. tap = (Bk \<up> k, <1::nat>)\<rbrace>"
       using Hoare_plus_halt decides_halting_def seq_tm_composable by blast
 
@@ -312,31 +436,9 @@ proof (rule ccontr)
   qed
 qed
 
-(*
-  p :: tprog0
 
-  \<forall>p' :: tprog0.
-    (p halts on tape <p'> with result b :: bool) 
-    \<and> (p' halts on empty tape) \<longleftrightarrow> b
-
-definition "decides_halting p \<equiv> \<forall>p'::tprog0.
-  \<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list p'>)\<rbrace>
-    p
-  \<lbrace>\<lambda>tap. \<exists>kr lr n. tap = (Bk \<up> kr, <n::nat> @ Bk \<up> lr) \<and> (n=1 \<longleftrightarrow> TMC_has_num_list_res p' [])\<rbrace>"
-
-lemma aux_det: "TMC_yields_num_res p xs n \<Longrightarrow> TMC_yields_num_res p xs n' \<Longrightarrow> n=n'" sorry
-
-find_theorems TMC_yields_num_res
-find_theorems "_::tprog0" name: det 
-
-lemma "decides_halting p \<longleftrightarrow> (\<forall>p'. \<exists>n. TMC_yields_num_res p (tm_to_nat_list p') n \<and> (n=1 \<longleftrightarrow> TMC_has_num_list_res p' [] ))"
-  unfolding decides_halting_def Hoare_halt_def
-  apply auto
-  
-lemma "\<nexists>p. decides_halting p"
-  unfolding decides_halting_def
-  find_theorems name: HaltingProblems
-*)
+(*TODO: Construct the dither machine and prove the Hoare triples associated with it in the assms of
+the Halting Problem.*)
 
 
 end

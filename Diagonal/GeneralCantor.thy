@@ -245,11 +245,11 @@ theorem "Non-re_Languages":
 text \<open>
   10. Turing Machines and the Halting Problem
 \<close>
-definition "halts p ns \<equiv> \<exists>Q. \<lbrace>\<lambda>tap. tap = ([], <ns::nat list>)\<rbrace> p \<lbrace>Q\<rbrace>"
-
 lemma top_holds_for [intro, simp]: "top holds_for conf"
   apply (cases conf)
   by simp
+
+definition "halts p ns \<equiv> \<exists>Q. \<lbrace>\<lambda>tap. tap = ([], <ns::nat list>)\<rbrace> p \<lbrace>Q\<rbrace>"
 
 lemma halts_alt_def: "halts p ns = (\<exists>n. is_final (steps0 (1, [], <ns>) p n))"
   unfolding halts_def Hoare_halt_def
@@ -377,7 +377,7 @@ proof (rule ccontr)
 
   then obtain H'::tprog0 where "decides_halting H'" ..
   then have "composable_tm0 (mk_composable0 H') \<and> (decides_halting (mk_composable0 H'))"
-    using Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_generalized composable_tm0_mk_composable0 decides_halting_def by blast
+    using Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_generalized composable_tm0_mk_composable0 decides_halting_def by blast 
   then have "\<exists>H. composable_tm0 H \<and> decides_halting H" using decides_halting_def by blast
   then obtain H::tprog0 where h: "composable_tm0 H \<and> decides_halting H" ..
 
@@ -415,8 +415,7 @@ proof (rule ccontr)
     then show ?thesis using contra_halts halts_def Hoare_unhalt_impl_not_Hoare_halt by blast
   next
     assume contra_unhalts: "\<not> halts ?contra (tm_to_nat_list ?contra)"
-    hence contra_unhalts_unf: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> ?contra \<up>"
-      using halts_def not_halts Hoare_halt_def by blast
+    hence contra_unhalts_unf: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> ?contra \<up>" using not_halts by blast
 
     from c have p1: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace>
                       copy
@@ -437,8 +436,11 @@ proof (rule ccontr)
 qed
 
 
-(*TODO: Construct the dither machine and prove the Hoare triples associated with it in the assms of
-the Halting Problem.*)
+(* TODO:
+  Construct the dither machine and prove the Hoare triples associated with it (in the assms of the
+  Halting Problem).
 
+  Abstract away the proof for the Halting Problem to reach an even more generalized diagonalization.
+*)
 
 end

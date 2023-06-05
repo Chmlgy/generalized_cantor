@@ -1,7 +1,14 @@
-section \<open> Generalized Cantor's Theorem and Instances\<close>
+section \<open>Generalized Cantor's Theorem and Instances\<close>
 
 theory GeneralCantor imports Complex_Main "HOL-Library.Countable" "HOL-Analysis.Analysis"
   "HOL-ZF.HOLZF" "~~/afp-2023-05-17/thys/Universal_Turing_Machine/HaltingProblems_K_H"
+  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/Turing_aux"
+  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/Numerals_Ex"
+  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/TuringDecidable"
+  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/HaltingProblems_K_aux"
+  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/TuringComputable"
+  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/DitherTM"
+  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/CopyTM"
 begin
 
 text \<open>
@@ -349,7 +356,6 @@ proof -
               qed
             qed
           qed
-
           with w_n' have "is_final(steps0 (1, cl', cl) tm (stp+1)) \<and> Q holds_for steps0 (1, cl', cl) tm (stp+1)" by auto
           moreover from w_fl_fr have "steps0 (1, cl', cl) tm (stp+1) = steps0 (1, cl', cl) (mk_composable0 tm) (stp+1)" by auto
           ultimately have "is_final(steps0 (1, cl', cl) (mk_composable0 tm) (stp+1)) \<and> Q holds_for steps0 (1, cl', cl) (mk_composable0 tm) (stp+1)" by auto
@@ -377,7 +383,7 @@ proof (rule ccontr)
 
   then obtain H'::tprog0 where "decides_halting H'" ..
   then have "composable_tm0 (mk_composable0 H') \<and> (decides_halting (mk_composable0 H'))"
-    using Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_generalized composable_tm0_mk_composable0 decides_halting_def by blast
+    using Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_generalized composable_tm0_mk_composable0 decides_halting_def by blast 
   then have "\<exists>H. composable_tm0 H \<and> decides_halting H" using decides_halting_def by blast
   then obtain H::tprog0 where h: "composable_tm0 H \<and> decides_halting H" ..
 
@@ -437,8 +443,10 @@ qed
 
 
 (* TODO:
-  Construct the dither machine and prove the Hoare triples associated with it in the assms of the
-  Halting Problem.
+  Construct the dither machine and prove the Hoare triples associated with it (in the assms of the
+  Halting Problem).
+
+  Abstract away the proof for the Halting Problem to reach an even more generalized diagonalization.
 *)
 
 end

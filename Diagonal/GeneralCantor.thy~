@@ -256,22 +256,21 @@ lemma top_holds_for [intro, simp]: "top holds_for conf"
   apply (cases conf)
   by simp
 
-definition "halts p ns \<equiv> \<exists>Q. \<lbrace>\<lambda>tap. tap = ([], <ns::nat list>)\<rbrace> p \<lbrace>Q\<rbrace>"
+definition "halts p ns \<equiv> \<exists>Q. \<lbrace>\<lambda>tap. tap = ([], <ns::nat>)\<rbrace> p \<lbrace>Q\<rbrace>"
 
 lemma halts_alt_def: "halts p ns = (\<exists>n. is_final (steps0 (1, [], <ns>) p n))"
   unfolding halts_def Hoare_halt_def
   by force
 
-lemma not_halts: "\<not> halts p ns \<longrightarrow> \<lbrace>\<lambda>tap. tap = ([], <ns::nat list>)\<rbrace> p \<up>"
-  using halts_def Hoare_unhalt_def reaches_final_def reaches_final_iff
-  by blast
+lemma not_halts: "\<not> halts p ns \<longrightarrow> \<lbrace>\<lambda>tap. tap = ([], <ns::nat>)\<rbrace> p \<up>"
+  using Hoare_unhaltI halts_alt_def by presburger
 
 lemma not_halts_alt: "\<not> halts p ns \<longrightarrow> (\<nexists>n. is_final (steps0 (1, [], <ns>) p n))"
   using halts_def Hoare_halt_def
   by blast
 
-definition "decides_halting H \<equiv> (\<forall>(p::tprog0) (ns::nat list).
-  \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list p, ns)>)\<rbrace>
+definition "decides_halting H \<equiv> (\<forall>(p::tprog0) (ns::nat).
+  \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat p, ns)>)\<rbrace>
    H
   \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <(if halts p ns then 0::nat else 1::nat)> @ Bk \<up> l)\<rbrace>)"
 
@@ -371,10 +370,10 @@ theorem Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_generalized: "\<l
   using Hoare_halt_def Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_aux old.prod.exhaust by auto
 (*------------------------------------*)
 
-theorem "Halting_Problem":
+lemma "halting_problem_assuming_dither_copy":
   assumes "\<exists>dither::tprog0. \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace> dither \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace>
                           \<and> \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <0::nat> @ Bk \<up> l)\<rbrace> dither \<up>"
-  and "\<exists>copy::tprog0. \<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>"
+  and "\<exists>copy::tprog0. \<forall>n::nat. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>"
 
   shows "\<nexists>H. decides_halting H"
 proof (rule ccontr)
@@ -390,63 +389,164 @@ proof (rule ccontr)
   from assms(1) obtain dither::tprog0 where d: "\<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace> dither \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace>
                                               \<and> \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <0::nat> @ Bk \<up> l)\<rbrace> dither \<up>" ..
 
-  from assms(2) obtain copy'::tprog0 where "\<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy' \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>" ..
+  from assms(2) obtain copy'::tprog0 where "\<forall>n::nat. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy' \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>" ..
   then have "composable_tm0 (mk_composable0 copy')
-          \<and> (\<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> mk_composable0 copy' \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>)"
+          \<and> (\<forall>n::nat. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> mk_composable0 copy' \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>)"
     using Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list composable_tm0_mk_composable0 by blast
   then have "\<exists>copy. composable_tm0 copy
-          \<and> (\<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>)" by blast
+          \<and> (\<forall>n::nat. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>)" by blast
   then obtain copy::tprog0 where c: "composable_tm0 copy 
-                                  \<and> (\<forall>n::nat list. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>)" ..
+                                  \<and> (\<forall>n::nat. \<lbrace>\<lambda>tap. tap = ([], <n>)\<rbrace> copy \<lbrace>\<lambda>tap. tap = ([Bk], <(n, n)>)\<rbrace>)" ..
 
   let ?contra = "copy |+| H |+| dither"
   show "False"
   proof cases
-    assume contra_halts: "halts ?contra (tm_to_nat_list ?contra)"
+    assume contra_halts: "halts ?contra (tm_to_nat ?contra)"
 
-    from c have p1: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace>
+    from c have p1: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat ?contra>)\<rbrace>
                       copy
-                     \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list ?contra, tm_to_nat_list ?contra)>)\<rbrace>" by simp
-    from h contra_halts have p2: "\<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list ?contra, tm_to_nat_list ?contra)>)\<rbrace>
+                     \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat ?contra, tm_to_nat ?contra)>)\<rbrace>" by simp
+    from h contra_halts have p2: "\<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat ?contra, tm_to_nat ?contra)>)\<rbrace>
                                    H
                                   \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <0::nat>  @ Bk \<up> l)\<rbrace>" unfolding decides_halting_def by presburger
     from d have p3: "\<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <0::nat>  @ Bk \<up> l)\<rbrace> dither \<up>" by simp
 
-    from c p1 p2 have p1_2: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace>
+    from c p1 p2 have p1_2: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat ?contra>)\<rbrace>
                               copy |+| H
                              \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <0::nat> @ Bk \<up> l)\<rbrace>" using Hoare_plus_halt by blast
-    from c h p1_2 p3 have "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> ?contra \<up>"
+    from c h p1_2 p3 have "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat ?contra>)\<rbrace> ?contra \<up>"
       using Hoare_plus_unhalt decides_halting_def seq_tm_composable by blast
 
     then show ?thesis using contra_halts halts_def Hoare_unhalt_impl_not_Hoare_halt by blast
   next
-    assume contra_unhalts: "\<not> halts ?contra (tm_to_nat_list ?contra)"
-    hence contra_unhalts_unf: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> ?contra \<up>" using not_halts by blast
+    assume contra_unhalts: "\<not> halts ?contra (tm_to_nat ?contra)"
+    hence contra_unhalts_unf: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat ?contra>)\<rbrace> ?contra \<up>" using not_halts by blast
 
-    from c have p1: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace>
+    from c have p1: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat ?contra>)\<rbrace>
                       copy
-                     \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list ?contra, tm_to_nat_list ?contra)>)\<rbrace>" by simp
-    from h contra_unhalts have p2: "\<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat_list ?contra, tm_to_nat_list ?contra)>)\<rbrace>
+                     \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat ?contra, tm_to_nat ?contra)>)\<rbrace>" by simp
+    from h contra_unhalts have p2: "\<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat ?contra, tm_to_nat ?contra)>)\<rbrace>
                                      H
                                     \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace>" unfolding decides_halting_def by presburger
     from d have p3: "\<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace> dither \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace>" by simp
 
-    from c p1 p2 have p1_2: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace>
+    from c p1 p2 have p1_2: "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat ?contra>)\<rbrace>
                               copy |+| H
                              \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace>" using Hoare_plus_halt by blast
-    from c h p1_2 p3 have "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat_list ?contra>)\<rbrace> ?contra \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace>"
+    from c h p1_2 p3 have "\<lbrace>\<lambda>tap. tap = ([], <tm_to_nat ?contra>)\<rbrace> ?contra \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace>"
       using Hoare_plus_halt decides_halting_def seq_tm_composable by blast
 
     then show ?thesis using contra_unhalts_unf Hoare_halt_impl_not_Hoare_unhalt by blast
   qed
 qed
 
+theorem "halting_problem":
+  shows "\<nexists> H. decides_halting H"
+  using One_nat_def append.simps(1) append.simps(2) replicate.simps(1) replicate.simps(2)
+        tape_of_nat_def tm_copy_correct tm_dither_halts'' tm_dither_loops''
+        halting_problem_assuming_dither_copy by auto
 
-(* TODO:
-  Construct the dither machine and prove the Hoare triples associated with it (in the assms of the
-  Halting Problem).
 
-  Abstract away the proof for the Halting Problem to reach an even more generalized diagonalization.
-*)
+text \<open>
+  11. Cantor in locales and a new interpretation of the halting problem.
+\<close>
+definition ocomp :: "(nat\<rightharpoonup>nat) \<Rightarrow> (nat\<rightharpoonup>nat) \<Rightarrow> (nat\<rightharpoonup>nat)" (infixl "\<oplus>" 55) where
+"ocomp f\<^sub>1 f\<^sub>2 x = (case f\<^sub>2 x of None \<Rightarrow> None | Some y \<Rightarrow> f\<^sub>1 y)"
+
+lemma ocomp_assoc [simp]: "a \<oplus> (b \<oplus> c) = a \<oplus> b \<oplus> c"
+  unfolding ocomp_def
+  by (metis option.case_eq_if)
+
+lemma "a \<oplus> Some = a"
+  unfolding ocomp_def
+  using option.simps(5) by force
+
+lemma "Some \<oplus> a = a"
+  unfolding ocomp_def
+  by (metis option.case_eq_if option.exhaust_sel option.simps(4))
+
+lemma "(\<lambda>_. None) \<oplus> a = (\<lambda>_. None)"
+  unfolding ocomp_def
+  by (simp add: option.case_eq_if option.simps(4))
+
+lemma "a \<oplus> (\<lambda>_. None) = (\<lambda>_. None)"
+  unfolding ocomp_def
+  by (simp add: option.simps(4))
+
+locale computable_universe_carrier =
+     fixes F :: "(nat\<rightharpoonup>nat) set" (*No assumption on the size of F, maybe we want it to be infinite?*)
+     fixes pull_up :: "(nat\<rightharpoonup>nat) \<Rightarrow> nat"
+     (*fixes push_down :: "nat \<Rightarrow> (nat\<rightharpoonup>nat)"*)
+
+     assumes id_in_F: "Some \<in> F"
+     assumes bot_in_F: "(\<lambda>_. None) \<in> F"
+     assumes countable: "inj_on pull_up F" (*Each member of F is mapped to a unique natural number*)
+     assumes comp_closed: "\<lbrakk>a \<in> F; b \<in> F\<rbrakk> \<Longrightarrow> a \<oplus> b \<in> F"
+begin
+  definition push_down :: "nat \<Rightarrow> (nat \<rightharpoonup> nat)" where "push_down \<equiv> inv_into F pull_up"
+
+  lemma push_pull_inv [simp]: "f \<in> F \<Longrightarrow> push_down (pull_up f) = f"
+    unfolding push_down_def
+    using countable
+    by simp
+
+  definition "f_curryable = {f \<in> F. (\<forall>x gn. f x = Some gn \<longrightarrow> push_down gn \<in> F)}"
+end
+
+locale computable_universe = computable_universe_carrier +
+  fixes \<alpha> \<Delta> :: "(nat\<rightharpoonup>nat)"
+
+  assumes "\<alpha> \<in> F"
+  assumes "\<alpha> 1 = None" "\<alpha> 0 = Some 1"
+
+  assumes "\<Delta> \<in> F"
+  assumes copy: "\<And>f. f \<in> f_curryable \<Longrightarrow> (f \<oplus> \<Delta>) x = (case f x of None \<Rightarrow> None | Some gn \<Rightarrow> (push_down gn) x)"
+begin
+  definition "H_partial x = (\<lambda>c. case (push_down x) c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some (0::nat))"
+  definition "H x = Some (pull_up (H_partial x))"
+
+  lemma possible_h_partial: "H_partial x c = Some 1 \<or> H_partial x c = Some 0"
+    unfolding H_partial_def
+    by (simp add: option.case_eq_if)
+
+  theorem locale_cantor: "H \<notin> F"
+  proof (rule ccontr)
+    note [[show_types]]
+    assume "\<not> (H \<notin> F)"
+    hence "H \<in> F" by simp
+
+    define contra where "contra = \<alpha> \<oplus> H \<oplus> \<Delta>"
+
+    show "False"
+    proof cases
+      assume "(H_partial (pull_up contra)) (pull_up contra) = Some 1"
+      hence contra_some: "\<exists>n. contra (pull_up contra) = Some n"
+        by (metis H_partial_def \<open>H \<in> (F::(nat \<Rightarrow> nat option) set)\<close> comp_closed computable_universe.axioms(2)
+                  computable_universe_axioms computable_universe_axioms_def contra_def is_none_code(2)
+                  ocomp_assoc option.case_eq_if option.inject option.split_sel_asm push_pull_inv zero_neq_one)
+
+      have contra_none: "contra (pull_up contra) = None" sorry
+
+      show "False" using contra_some contra_none by simp
+    next
+      assume "(H_partial (pull_up contra)) (pull_up contra) \<noteq> Some 1"
+      hence "(H_partial (pull_up contra)) (pull_up contra) = Some 0" using possible_h_partial by blast
+      hence contra_none: "contra (pull_up contra) = None"
+        by (metis H_partial_def \<open>H \<in> (F::(nat \<Rightarrow> nat option) set)\<close>
+                  \<open>H_partial ((pull_up::(nat \<Rightarrow> nat option) \<Rightarrow> nat) (contra::nat \<Rightarrow> nat option)) (pull_up contra) \<noteq> Some (1::nat)\<close>
+                  comp_closed computable_universe_axioms computable_universe_axioms_def
+                  computable_universe_def contra_def option.case_eq_if push_pull_inv)
+      
+      have contra_some: "\<exists>n. contra (pull_up contra) = Some n" sorry
+
+      show "False" using contra_none contra_some by simp
+    qed
+  qed
+end
+
+interpretation computable_universe turing_F turing_pull_up turing_dither turing_copy
+  apply unfold_locales
+  sorry
+
 
 end

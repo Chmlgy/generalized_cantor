@@ -447,12 +447,108 @@ theorem "halting_problem":
         halting_problem_assuming_dither_copy by auto
 
 
-(* TODO:
-  Use tm_dither and tm_copy to prove the Hoare triples associated with them (in the assms of the
-  Halting Problem). Then prove the non existence without assms.
+text \<open>
+  11. Cantor in locales and a new interpretation of the halting problem.
+\<close>
+definition ocomp :: "(nat\<rightharpoonup>nat) \<Rightarrow> (nat\<rightharpoonup>nat) \<Rightarrow> (nat\<rightharpoonup>nat)" (infixl "\<oplus>" 55) where
+"ocomp f\<^sub>1 f\<^sub>2 x = (case f\<^sub>2 x of None \<Rightarrow> None | Some y \<Rightarrow> f\<^sub>1 y)"
 
-  Abstract away the proof for the Halting Problem to reach an even more generalized diagonalization.
-  Making use of computable universes.
-*)
+lemma ocomp_assoc [simp]: "a \<oplus> (b \<oplus> c) = a \<oplus> b \<oplus> c"
+  unfolding ocomp_def
+  by (metis option.case_eq_if)
+
+lemma "a \<oplus> Some = a"
+  unfolding ocomp_def
+  using option.simps(5) by force
+
+lemma "Some \<oplus> a = a"
+  unfolding ocomp_def
+  by (metis option.case_eq_if option.exhaust_sel option.simps(4))
+
+lemma "(\<lambda>_. None) \<oplus> a = (\<lambda>_. None)"
+  unfolding ocomp_def
+  by (simp add: option.case_eq_if option.simps(4))
+
+lemma "a \<oplus> (\<lambda>_. None) = (\<lambda>_. None)"
+  unfolding ocomp_def
+  by (simp add: option.simps(4))
+
+locale computable_universe_carrier =
+     fixes F :: "(nat\<rightharpoonup>nat) set" (*No assumption on the size of F, maybe we want it to be infinite?*)
+     fixes pull_up :: "(nat\<rightharpoonup>nat) \<Rightarrow> nat"
+     (*fixes push_down :: "nat \<Rightarrow> (nat\<rightharpoonup>nat)"*)
+
+     assumes id_in_F: "Some \<in> F"
+     assumes bot_in_F: "(\<lambda>_. None) \<in> F"
+     assumes countable: "inj_on pull_up F" (*Each member of F is mapped to a unique natural number*)
+     assumes comp_closed: "\<lbrakk>a \<in> F; b \<in> F\<rbrakk> \<Longrightarrow> a \<oplus> b \<in> F"
+begin
+  definition push_down :: "nat \<Rightarrow> (nat \<rightharpoonup> nat)" where "push_down \<equiv> inv_into F pull_up"
+
+  lemma push_pull_inv [simp]: "f \<in> F \<Longrightarrow> push_down (pull_up f) = f"
+    unfolding push_down_def
+    using countable
+    by simp
+
+  definition "f_curryable = {f \<in> F. (\<forall>x gn. f x = Some gn \<longrightarrow> push_down gn \<in> F)}"
+end
+
+locale computable_universe = computable_universe_carrier +
+  fixes \<alpha> \<Delta> :: "(nat\<rightharpoonup>nat)"
+
+  assumes "\<alpha> \<in> F"
+  assumes "\<alpha> 1 = None" "\<alpha> 0 = Some 1"
+
+  assumes "\<Delta> \<in> F"
+  assumes copy: "\<And>f. f \<in> f_curryable \<Longrightarrow> (f \<oplus> \<Delta>) x = (case f x of None \<Rightarrow> None | Some gn \<Rightarrow> (push_down gn) x)"
+begin
+  (*definition "H_partial x = (\<lambda>c. case (push_down x) c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some 0)"*)
+  definition "H x = Some (pull_up (\<lambda>c. case (push_down x) c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some 0))"
+
+  (*
+  lemma possible_h_partial: "H_partial x c = Some 1 \<or> H_partial x c = Some 0"
+    unfolding H_partial_def
+    by (simp add: option.case_eq_if)
+  *)
+
+  theorem locale_cantor: "H \<notin> F"
+  proof (rule ccontr)
+    note [[show_types]]
+    assume "\<not> (H \<notin> F)"
+    hence "H \<in> F" by simp
+
+    define contra where "contra = \<alpha> \<oplus> H \<oplus> \<Delta>"
+
+    show "False"
+    proof cases
+      assume "(H_partial (pull_up contra)) (pull_up contra) = Some 1"
+      hence contra_some: "\<exists>n. contra (pull_up contra) = Some n"
+        by (metis H_partial_def \<open>H \<in> (F::(nat \<Rightarrow> nat option) set)\<close> comp_closed computable_universe.axioms(2)
+                  computable_universe_axioms computable_universe_axioms_def contra_def is_none_code(2)
+                  ocomp_assoc option.case_eq_if option.inject option.split_sel_asm push_pull_inv zero_neq_one)
+
+      have contra_none: "contra (pull_up contra) = None" sorry
+
+      show "False" using contra_some contra_none by simp
+    next
+      assume "(H_partial (pull_up contra)) (pull_up contra) \<noteq> Some 1"
+      hence "(H_partial (pull_up contra)) (pull_up contra) = Some 0" using possible_h_partial by blast
+      hence contra_none: "contra (pull_up contra) = None"
+        by (metis H_partial_def \<open>H \<in> (F::(nat \<Rightarrow> nat option) set)\<close>
+                  \<open>H_partial ((pull_up::(nat \<Rightarrow> nat option) \<Rightarrow> nat) (contra::nat \<Rightarrow> nat option)) (pull_up contra) \<noteq> Some (1::nat)\<close>
+                  comp_closed computable_universe_axioms computable_universe_axioms_def
+                  computable_universe_def contra_def option.case_eq_if push_pull_inv)
+      
+      have contra_some: "\<exists>n. contra (pull_up contra) = Some n" sorry
+
+      show "False" using contra_none contra_some by simp
+    qed
+  qed
+end
+
+interpretation computable_universe turing_F turing_pull_up turing_dither turing_copy
+  apply unfold_locales
+  sorry
+
 
 end

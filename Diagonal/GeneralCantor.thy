@@ -222,13 +222,13 @@ text \<open>
   8. Russel's Paradox
 \<close>
 (*
-In the context of Generalized_Cantor g becomes the characteristic function of sets that are not
-members of themselves, i.e. g x = True iff Not (Elem x x).
-
-So, if there was a set R which included all the sets that are not members of themselves then,
-Elem R = g
-
-But such R cannot exist as Elem is not surjective, it cannot represent g, by Classic_Cantor.
+  In the context of Generalized_Cantor g becomes the characteristic function of sets that are not
+  members of themselves, i.e. g x = True iff Not (Elem x x).
+  
+  So, if there was a set R which included all the sets that are not members of themselves then,
+  Elem R = g
+  
+  But such R cannot exist as Elem is not surjective, it cannot represent g, by Classic_Cantor.
 *)
 lemma "Russels's_Paradox": "surj Elem \<Longrightarrow> False"
   apply (rule Classic_Cantor)
@@ -239,6 +239,9 @@ text \<open>
   9. Counting argument to show the existence of non-r.e. languages
 \<close>
 instance action :: countable
+  by countable_datatype
+
+instance cell :: countable
   by countable_datatype
 
 theorem "Non-re_Languages":
@@ -274,7 +277,7 @@ definition "decides_halting H \<equiv> (\<forall>(p::tprog0) (ns::nat).
    H
   \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <(if halts p ns then 0::nat else 1::nat)> @ Bk \<up> l)\<rbrace>)"
 
-(*TODO: AFP entry should include this.*)
+(*------------------------------TODO: AFP entry should include this.------------------------------*)
 lemma Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_aux: "\<lbrace>\<lambda>tap. tap = (cl', cl)\<rbrace> tm \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>tap. tap = (cl', cl)\<rbrace> mk_composable0 tm \<lbrace>Q\<rbrace>" 
   unfolding Hoare_halt_def
 proof -
@@ -368,7 +371,7 @@ qed
 
 theorem Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_generalized: "\<lbrace>P\<rbrace> tm \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>P\<rbrace> mk_composable0 tm \<lbrace>Q\<rbrace>"
   using Hoare_halt_def Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_aux old.prod.exhaust by auto
-(*------------------------------------*)
+(*------------------------------------------------------------------------------------------------*)
 
 lemma "halting_problem_assuming_dither_copy":
   assumes "\<exists>dither::tprog0. \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace> dither \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace>
@@ -463,7 +466,7 @@ lemma "a \<oplus> Some = a"
 
 lemma "Some \<oplus> a = a"
   unfolding ocomp_def
-  oops
+  oops (*I don't know why but sledgehammer fails here*)
 
 lemma "(\<lambda>_. None) \<oplus> a = (\<lambda>_. None)"
   unfolding ocomp_def
@@ -474,25 +477,34 @@ lemma "a \<oplus> (\<lambda>_. None) = (\<lambda>_. None)"
   by (simp add: option.case_eq_if)
 
 locale computable_universe_carrier =
-     fixes F :: "(nat\<rightharpoonup>nat) set"
-     fixes pull_up :: "(nat\<rightharpoonup>nat) \<Rightarrow> nat"
-     fixes push_down :: "nat option \<Rightarrow> (nat\<rightharpoonup>nat)"
-
-     assumes id_in_F: "Some \<in> F"
-     assumes bot_in_F: "(\<lambda>_. None) \<in> F"
-     assumes countable: "inj_on pull_up F"
-     assumes comp_closed: "\<lbrakk>a \<in> F; b \<in> F\<rbrakk> \<Longrightarrow> a \<oplus> b \<in> F"
-
-     (*Slippery slope here. A better way I think is to just say push_down is the inverse of Some \<circ> pull_up,
-       no other structure is needed.
-
-       Or, we just put a condition on the input. If Some n is given and there exists an f which when
-       pulled up returns n, we return f, otherwise we return bottom.*)
-     assumes pushing_down: "push_down x = (case x of Some n \<Rightarrow> (if \<exists>f. pull_up f = n then f else (\<lambda>_.None)) | None \<Rightarrow> (\<lambda>_. None))"
+  fixes F :: "(nat\<rightharpoonup>nat) set"
+  fixes pull_up :: "(nat\<rightharpoonup>nat) \<Rightarrow> nat"
+  fixes push_down :: "nat option \<Rightarrow> (nat\<rightharpoonup>nat)"
+  
+  assumes id_in_F: "Some \<in> F"
+  assumes bot_in_F: "(\<lambda>_. None) \<in> F"
+  assumes countable: "inj_on pull_up F"
+  assumes comp_closed: "\<lbrakk>a \<in> F; b \<in> F\<rbrakk> \<Longrightarrow> a \<oplus> b \<in> F"
+  
+  (*Slippery slope here. A better way I think is to just say push_down is the inverse of Some \<circ> pull_up,
+   no other structure is needed.
+  
+   Or, we just put a condition on the input. If Some n is given and there exists an f which when
+   pulled up returns n, we return f, otherwise we return bottom.*)
+  assumes pushing_down: "push_down x = (case x of Some n \<Rightarrow> (if \<exists>f. pull_up f = n then f else (\<lambda>_.None)) | None \<Rightarrow> (\<lambda>_. None))"
 begin
   lemma push_pull_inv [simp]: "f \<in> F \<Longrightarrow> push_down (Some (pull_up f)) = f"
     using countable pushing_down
     by (metis (mono_tags, lifting) option.simps(5))
+
+  lemma sanity_pushing_down_1: "\<exists>f. pull_up f = n \<longrightarrow> push_down (Some n) = f"
+    by blast
+
+  lemma sanity_pushing_down_2: "\<nexists>f. pull_up f = n \<longrightarrow> push_down (Some n) = (\<lambda>_. None)"
+    by (smt (verit, ccfv_SIG) bind_eq_None_conv bot_in_F pushing_down computable_universe_carrier_axioms option.sel option.simps(3) option.simps(5) push_pull_inv)
+
+  lemma pushing_only_in_F: "\<forall>x. push_down x \<in> F"
+    using bot_in_F push_pull_inv sanity_pushing_down_2 by blast
 end
 
 locale computable_universe = computable_universe_carrier +
@@ -503,17 +515,17 @@ locale computable_universe = computable_universe_carrier +
 
   assumes delta_in_f: "\<Delta> \<in> F"
   (*f might require to have additional requirements, such as being curryable or we restrict push_down
-    as mentioned above and that case does not have to be considered anymore*)
+    as mentioned above which makes considering that case obsolete*)
   assumes delta: "\<And>f. f \<in> F \<Longrightarrow> (f \<oplus> \<Delta>) x = (push_down (f x)) x"
 begin
-  definition "H_partial x = (\<lambda>c. case (push_down (Some x)) c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some (0::nat))"
-  definition "H x = Some (pull_up (H_partial x))"
+  definition "H_combinator x = (\<lambda>c. case (push_down (Some x)) c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some (0::nat))"
+  definition "H x = Some (pull_up (H_combinator x))"
 
-  lemma possible_h_partial: "H_partial x c = Some 1 \<or> H_partial x c = Some 0"
-    unfolding H_partial_def
+  lemma possible_h_partial: "H_combinator x c = Some 1 \<or> H_combinator x c = Some 0"
+    unfolding H_combinator_def
     by (simp add: option.case_eq_if)
 
-  lemma H_ocomp_Delta: "H \<in> F \<Longrightarrow> (H \<oplus> \<Delta>) (pull_up f) = H_partial (pull_up f) (pull_up f)"
+  lemma H_ocomp_Delta: "H \<in> F \<Longrightarrow> (H \<oplus> \<Delta>) (pull_up f) = H_combinator (pull_up f) (pull_up f)"
     by (metis (mono_tags, lifting) H_def option.simps(5) pushing_down)
 
   theorem locale_cantor: "H \<notin> F"
@@ -524,17 +536,17 @@ begin
     define contra where "contra = \<alpha> \<oplus> H \<oplus> \<Delta>"
     show "False"
     proof cases
-      assume one: "H_partial (pull_up contra) (pull_up contra) = Some 1"
+      assume one: "H_combinator (pull_up contra) (pull_up contra) = Some 1"
       hence contra_some: "\<exists>n. contra (pull_up contra) = Some n"
-        by (metis H_partial_def \<open>H \<in> F\<close> comp_closed computable_universe.axioms(2) computable_universe_axioms computable_universe_axioms_def contra_def is_none_code(2) ocomp_assoc option.case_eq_if option.inject option.split_sel_asm push_pull_inv zero_neq_one)
+        by (metis H_combinator_def \<open>H \<in> F\<close> comp_closed computable_universe.axioms(2) computable_universe_axioms computable_universe_axioms_def contra_def is_none_code(2) ocomp_assoc option.case_eq_if option.inject option.split_sel_asm push_pull_inv zero_neq_one)
 
       have "contra (pull_up contra) = \<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra)))"
         by (metis contra_def contra_some ocomp_assoc ocomp_def option.case_eq_if option.distinct(1))
       moreover
-      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (H_partial (pull_up contra) (pull_up contra)))"
+      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (H_combinator (pull_up contra) (pull_up contra)))"
         by (simp add: H_ocomp_Delta \<open>H \<in> F\<close>)
       moreover
-      have "\<alpha> (the (H_partial (pull_up contra) (pull_up contra))) = \<alpha> (1)"
+      have "\<alpha> (the (H_combinator (pull_up contra) (pull_up contra))) = \<alpha> (1)"
         by (simp add: one)
       moreover
       have "\<alpha> (1) = None"
@@ -544,18 +556,18 @@ begin
 
       show "False" using contra_some contra_none by simp
     next
-      assume not_one: "H_partial (pull_up contra) (pull_up contra) \<noteq> Some 1"
-      hence zero: "H_partial (pull_up contra) (pull_up contra) = Some 0" using possible_h_partial by blast
+      assume not_one: "H_combinator (pull_up contra) (pull_up contra) \<noteq> Some 1"
+      hence zero: "H_combinator (pull_up contra) (pull_up contra) = Some 0" using possible_h_partial by blast
       hence contra_none: "contra (pull_up contra) = None"
-        by (metis H_partial_def \<open>H \<in> F\<close> not_one comp_closed computable_universe_axioms computable_universe_axioms_def computable_universe_def contra_def option.case_eq_if push_pull_inv)
+        by (metis H_combinator_def \<open>H \<in> F\<close> not_one comp_closed computable_universe_axioms computable_universe_axioms_def computable_universe_def contra_def option.case_eq_if push_pull_inv)
 
       have "contra (pull_up contra) = \<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra)))"
         by (metis H_ocomp_Delta \<open>H \<in> F\<close> zero contra_def ocomp_assoc ocomp_def option.sel option.simps(5))
       moreover
-      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (H_partial (pull_up contra) (pull_up contra)))"
+      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (H_combinator (pull_up contra) (pull_up contra)))"
         by (simp add: H_ocomp_Delta \<open>H \<in> F\<close>)
       moreover
-      have "\<alpha> (the (H_partial (pull_up contra) (pull_up contra))) = \<alpha> (0)"
+      have "\<alpha> (the (H_combinator (pull_up contra) (pull_up contra))) = \<alpha> (0)"
         by (simp add: zero)
       moreover
       have "\<alpha> (0) = Some 1"
@@ -567,6 +579,9 @@ begin
     qed
   qed
 end
+
+lemma countable_tape: "from_nat (to_nat (tp::tape)) = tp"
+  by simp
 
 interpretation computable_universe turing_F turing_pull_up turing_push_down turing_dither turing_copy
   apply unfold_locales

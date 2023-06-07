@@ -490,7 +490,7 @@ begin
     using countable
     by simp
 
-  definition "f_curryable = {f \<in> F. (\<forall>x gn. f x = Some gn \<longrightarrow> push_down gn \<in> F)}"
+  definition "f_curryable f \<equiv> (f \<in> F) \<and> (\<forall>x gn. f x = Some gn \<longrightarrow> push_down gn \<in> F)"
 end
 
 locale computable_universe = computable_universe_carrier +
@@ -500,7 +500,7 @@ locale computable_universe = computable_universe_carrier +
   assumes "\<alpha> 1 = None" "\<alpha> 0 = Some 1"
 
   assumes "\<Delta> \<in> F"
-  assumes copy: "\<And>f. f \<in> f_curryable \<Longrightarrow> (f \<oplus> \<Delta>) x = (case f x of None \<Rightarrow> None | Some gn \<Rightarrow> (push_down gn) x)"
+  assumes copy: "\<And>f. f_curryable f \<Longrightarrow> (f \<oplus> \<Delta>) x = (case f x of None \<Rightarrow> None | Some gn \<Rightarrow> (push_down gn) x)"
 begin
   definition "H_partial x = (\<lambda>c. case (push_down x) c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some (0::nat))"
   definition "H x = Some (pull_up (H_partial x))"
@@ -508,6 +508,10 @@ begin
   lemma possible_h_partial: "H_partial x c = Some 1 \<or> H_partial x c = Some 0"
     unfolding H_partial_def
     by (simp add: option.case_eq_if)
+
+  (* TODO:
+  lemma H_curryable: "(H \<oplus> \<Delta>) (pull_up f) = H_partial (pull_up f) (pull_up f)"
+  *)  
 
   theorem locale_cantor: "H \<notin> F"
   proof (rule ccontr)
@@ -525,7 +529,20 @@ begin
                   computable_universe_axioms computable_universe_axioms_def contra_def is_none_code(2)
                   ocomp_assoc option.case_eq_if option.inject option.split_sel_asm push_pull_inv zero_neq_one)
 
-      have contra_none: "contra (pull_up contra) = None" sorry
+      have "contra (pull_up contra) = \<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra)))"
+        by (metis contra_def contra_some ocomp_assoc ocomp_def option.case_eq_if option.distinct(1))
+      moreover
+      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (H_partial (pull_up contra) (pull_up contra)))"
+        sorry
+      moreover
+      have "\<alpha> (the (H_partial (pull_up contra) (pull_up contra))) = \<alpha> (the (Some 1))"
+        by (simp add: \<open>H_partial ((pull_up::(nat \<Rightarrow> nat option) \<Rightarrow> nat) (contra::nat \<Rightarrow> nat option)) (pull_up contra) = Some (1::nat)\<close>)
+      moreover
+      have "\<alpha> (the (Some 1)) = None"
+        using \<open>H_partial ((pull_up::(nat \<Rightarrow> nat option) \<Rightarrow> nat) (contra::nat \<Rightarrow> nat option)) (pull_up contra) = Some (1::nat)\<close> calculation(1) calculation(2) computable_universe_axioms computable_universe_axioms_def computable_universe_def contra_some ocomp_def option.distinct(1) option.sel by auto
+      ultimately
+      have contra_none: "contra (pull_up contra) = None"
+        by presburger
 
       show "False" using contra_some contra_none by simp
     next

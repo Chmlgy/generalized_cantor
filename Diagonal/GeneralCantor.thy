@@ -563,7 +563,6 @@ end
 
 interpretation computable_universe turing_F turing_pull_up turing_dither turing_copy
   apply unfold_locales
-  sorry
-
+  oops
 
 end

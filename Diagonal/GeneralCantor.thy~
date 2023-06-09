@@ -505,13 +505,15 @@ locale computable_universe_curried = computable_universe_carrier +
   assumes alpha_in_f: "\<alpha> \<in> F"
   assumes alpha: "\<alpha> 1 = None" "\<alpha> 0 = Some 1"
 
+
   assumes delta_in_f: "\<Delta> \<in> F"
   assumes delta: "\<And>f. f \<in> F \<Longrightarrow> (f \<oplus> \<Delta>) x = (push_down (f x)) x"
 begin
   theorem locale_cantor:
   fixes H :: "(nat\<rightharpoonup>nat)"
 
-  assumes H_behaviour: "\<forall>f \<in> F. H (pull_up f) = Some (pull_up (SOME hf. hf = (\<lambda>c. case f c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some 0) \<and> hf \<in> F))"
+  assumes Hf_falls_in_F: "\<And>f h. f \<in> F \<Longrightarrow> H (pull_up f) = Some (pull_up h) \<Longrightarrow> h \<in> F"
+  assumes H_behaviour: "\<forall>f \<in> F. H (pull_up f) = Some (pull_up (\<lambda>c. case f c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some 0))"
 
   shows "H \<notin> F"
   proof (rule ccontr)
@@ -521,32 +523,63 @@ begin
     define contra where "contra = \<alpha> \<oplus> H \<oplus> \<Delta>"
     have contra_in_F: "contra \<in> F" by (simp add: \<open>H \<in> F\<close> alpha_in_f comp_closed contra_def delta_in_f)
 
-    let ?hcontra = "SOME hcontra. hcontra = (\<lambda>c. case contra c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some 0) \<and> hcontra \<in> F"
-
+    have "\<forall>h. H (pull_up contra) = Some (pull_up h) \<longrightarrow> h \<in> F" using Hf_falls_in_F contra_in_F
+      by fastforce
+    moreover
+    have h_pull_up_contra: "H (pull_up contra) = Some (pull_up (\<lambda>c. case contra c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some 0))"
+      using H_behaviour contra_in_F by presburger
+    ultimately
+    have hcontra_in_F: "(\<lambda>c. case contra c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some 0) \<in> F"
+      by blast
+    
     have possible_pushed_H: "\<And>c. (push_down (H (pull_up contra))) c = Some 1 \<or> (push_down (H (pull_up contra))) c = Some 0"
-    proof -
-      have "push_down (H (pull_up contra)) = push_down (Some (pull_up ?hcontra))"
-        using H_behaviour contra_in_F by presburger
-      moreover
-      have "push_down (Some (pull_up ?hcontra)) = ?hcontra"
-        sorry
-      moreover
-      have "\<And>c. ?hcontra c = Some 1 \<or> ?hcontra c = Some 0"
-        sorry
-      ultimately
-      show "\<And>c. (push_down (H (pull_up contra))) c = Some 1 \<or> (push_down (H (pull_up contra))) c = Some 0" by presburger
-    qed
-
-    have hcontra_source: "H (pull_up contra) = Some (pull_up ?hcontra)" by (simp add: assms contra_in_F)
+      by (metis h_pull_up_contra hcontra_in_F option.case_eq_if push_pull_inv)
 
     show "False"
     proof cases
       assume one: "(push_down (H (pull_up contra))) (pull_up contra) = Some 1"
-      show "False" sorry
+
+      hence "(\<lambda>c. case contra c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some 0) (pull_up contra) = Some 1"
+        by (metis h_pull_up_contra hcontra_in_F option.case_eq_if option.case_eq_if option.sel push_pull_inv zero_neq_one)
+      hence contra_some: "\<exists>n. contra (pull_up contra) = Some n"
+        using one_neq_zero option.case_eq_if option.collapse option.inject by fastforce
+
+      have "contra (pull_up contra) = \<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra)))"
+        by (metis \<open>H \<in> F\<close> alpha(1) contra_def delta ocomp_assoc ocomp_def one option.sel option.simps(5))
+      moreover
+      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (push_down (H (pull_up contra)) (pull_up contra)))"
+        by (simp add: \<open>H \<in> F\<close> delta)
+      moreover
+      have "\<alpha> (the (push_down (H (pull_up contra)) (pull_up contra))) = \<alpha> 1"
+        by (simp add: one)
+      ultimately
+      have contra_none: "contra (pull_up contra) = None"
+        using alpha(1) by presburger
+      
+      show "False" using contra_some contra_none by simp
     next
-      assume "(push_down (H (pull_up contra))) (pull_up contra) \<noteq> Some 1"
-      hence zero: "(push_down (H (pull_up contra))) (pull_up contra) = Some 0" using possible_pushed_H by blast
-      show "False" sorry
+      assume not_one: "(push_down (H (pull_up contra))) (pull_up contra) \<noteq> Some 1"
+
+      hence zero: "(push_down (H (pull_up contra))) (pull_up contra) = Some 0"
+        using possible_pushed_H by auto
+      hence "(\<lambda>c. case contra c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some 0) (pull_up contra) = Some 0"
+        by (metis not_one h_pull_up_contra hcontra_in_F option.case_eq_if option.case_eq_if push_pull_inv)
+      hence contra_none: "contra (pull_up contra) = None"
+        by (smt (verit, ccfv_SIG) not_one option.case_eq_if possible_pushed_H)
+
+      have "contra (pull_up contra) = \<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra)))"
+        by (metis \<open>H \<in> F\<close> alpha(2) computable_universe_curried.delta computable_universe_curried_axioms contra_def not_one ocomp_assoc ocomp_def option.sel option.simps(5) possible_pushed_H)
+      moreover
+      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (push_down (H (pull_up contra)) (pull_up contra)))"
+        by (simp add: \<open>H \<in> F\<close> delta)
+      moreover
+      have "\<alpha> (the (push_down (H (pull_up contra)) (pull_up contra))) = \<alpha> 0"
+        by (simp add: zero)
+      ultimately
+      have contra_some: "\<exists>n. contra (pull_up contra) = Some n"
+        using alpha(2) by fastforce
+
+      show "False" using contra_none contra_some by simp
     qed
   qed
 end

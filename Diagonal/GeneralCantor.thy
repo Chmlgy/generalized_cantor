@@ -476,7 +476,7 @@ locale computable_universe_carrier =
   fixes pull_up :: "(nat\<rightharpoonup>nat) \<Rightarrow> nat"
   
   assumes id_in_F: "Some \<in> F"
-  assumes bot_in_F: "(\<lambda>_. None) \<in> F"
+  assumes bot_in_F: "(\<lambda>_.None) \<in> F"
   assumes countable: "inj_on pull_up F"
   assumes comp_closed: "\<lbrakk>a \<in> F; b \<in> F\<rbrakk> \<Longrightarrow> a \<oplus> b \<in> F"
 begin
@@ -584,6 +584,74 @@ begin
   qed
 end
 
+locale computable_universe_paired = computable_universe_carrier +
+  fixes \<alpha> \<Delta> :: "(nat\<rightharpoonup>nat)"
+
+  assumes alpha_in_f: "\<alpha> \<in> F"
+  assumes alpha: "\<alpha> 1 = None" "\<alpha> 0 = Some 1"
+
+
+  assumes delta_in_f: "\<Delta> \<in> F"
+  assumes delta: "\<And>f. f \<in> F \<Longrightarrow> (f \<oplus> \<Delta>) x = f (to_nat (x, x))"
+begin
+  theorem locale_cantor:
+    fixes H :: "(nat\<rightharpoonup>nat)"
+
+    assumes H_behaviour: "\<And>f (c::nat). f \<in> F \<Longrightarrow>  H (to_nat (pull_up f, c)) = (case f c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some 0)"
+
+    shows "H \<notin> F"
+  proof (rule ccontr)
+    assume "\<not> H \<notin> F"
+    hence "H \<in> F" by simp
+
+    define contra where "contra = \<alpha> \<oplus> H \<oplus> \<Delta>"
+    have contra_in_F: "contra \<in> F" by (simp add: \<open>H \<in> F\<close> alpha_in_f comp_closed contra_def delta_in_f)
+
+    have possible_H: "H (to_nat ((pull_up contra), (pull_up contra))) = Some 1 \<or> H (to_nat ((pull_up contra), (pull_up contra))) = Some 0"
+      by (simp add: alpha(2) assms contra_in_F option.case_eq_if)
+
+    show "False"
+    proof cases
+      assume one: "H (to_nat ((pull_up contra), (pull_up contra))) = Some 1"
+      hence contra_some: "\<exists>n. contra (pull_up contra) = Some n"
+        by (metis UNIV_I assms chi_fun_0_iff chi_fun_1_I contra_in_F option.exhaust_sel option.simps(4))
+
+      have "contra (pull_up contra) = \<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra)))"
+        by (metis contra_some contra_def ocomp_assoc ocomp_def option.case_eq_if option.distinct(1) option.simps(4))
+      moreover
+      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (H (to_nat ((pull_up contra), (pull_up contra)))))"
+        by (simp add: \<open>H \<in> F\<close> delta)
+      moreover
+      have "\<alpha> (the (H (to_nat ((pull_up contra), (pull_up contra))))) = \<alpha> 1"
+        by (simp add: one option.sel)
+      ultimately
+      have contra_none: "contra (pull_up contra) = None"
+        using alpha(1) by presburger
+
+      show "False" using contra_some contra_none by simp
+    next
+      assume not_one: "H (to_nat ((pull_up contra), (pull_up contra))) \<noteq> Some 1"
+      hence zero: "H (to_nat ((pull_up contra), (pull_up contra))) = Some 0" using possible_H by blast
+      hence contra_none: "contra (pull_up contra) = None"
+        by (metis assms contra_in_F not_one option.case_eq_if)
+
+      have "contra (pull_up contra) = \<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra)))"
+        by (metis \<open>H \<in> F\<close> contra_def delta ocomp_assoc ocomp_def option.sel option.simps(5) zero)
+      moreover
+      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (H (to_nat ((pull_up contra), (pull_up contra)))))"
+        by (simp add: \<open>H \<in> F\<close> delta)
+      moreover
+      have "\<alpha> (the (H (to_nat ((pull_up contra), (pull_up contra))))) = \<alpha> 0"
+        by (simp add: zero option.sel)
+      ultimately
+      have contra_some: "\<exists>n. contra (pull_up contra) = Some n"
+        by (simp add: alpha(2))
+
+      show "False" using contra_none contra_some by simp
+    qed
+  qed
+end
+
 lemma countable_tape: "from_nat (to_nat (tp::tape)) = tp"
   by simp
 
@@ -625,7 +693,7 @@ interpretation computable_universe_carrier turing_F turing_pull_up
   apply (simp add: closed_turing_F)
   done
 
-interpretation computable_universe_curried turing_F turing_pull_up turing_dither turing_copy
+interpretation computable_universe_paired turing_F turing_pull_up turing_dither turing_copy
   apply unfold_locales
   oops
 

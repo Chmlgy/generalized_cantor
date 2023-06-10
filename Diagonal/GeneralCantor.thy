@@ -1,14 +1,16 @@
 section \<open>Generalized Cantor's Theorem and Instances\<close>
 
-theory GeneralCantor imports Complex_Main "HOL-Library.Countable" "HOL-Analysis.Analysis"
-  "HOL-ZF.HOLZF" "~~/afp-2023-05-17/thys/Universal_Turing_Machine/HaltingProblems_K_H"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/Turing_aux"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/Numerals_Ex"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/TuringDecidable"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/HaltingProblems_K_aux"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/TuringComputable"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/DitherTM"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/CopyTM"
+theory GeneralCantor imports
+  Complex_Main
+  "HOL-Library.Countable"
+  "HOL-Analysis.Analysis"
+  "HOL-ZF.HOLZF"
+  "Universal_Turing_Machine.Turing_aux"
+  "Universal_Turing_Machine.TuringDecidable"
+  "Universal_Turing_Machine.HaltingProblems_K_aux"
+  "Universal_Turing_Machine.TuringComputable"
+  "Universal_Turing_Machine.DitherTM"
+  "Universal_Turing_Machine.CopyTM"
 begin
 
 text \<open>
@@ -261,7 +263,8 @@ lemma halts_alt_def: "halts p ns = (\<exists>n. is_final (steps0 (1, [], <ns>) p
   by force
 
 lemma not_halts: "\<not> halts p ns \<longrightarrow> \<lbrace>\<lambda>tap. tap = ([], <ns::nat>)\<rbrace> p \<up>"
-  using Hoare_unhaltI halts_alt_def by presburger
+  using Hoare_unhaltI halts_alt_def
+  by presburger
 
 lemma not_halts_alt: "\<not> halts p ns \<longrightarrow> (\<nexists>n. is_final (steps0 (1, [], <ns>) p n))"
   using halts_def Hoare_halt_def
@@ -442,7 +445,8 @@ theorem "halting_problem":
   shows "\<nexists> H. decides_halting H"
   using One_nat_def append.simps(1) append.simps(2) replicate.simps(1) replicate.simps(2)
         tape_of_nat_def tm_copy_correct tm_dither_halts'' tm_dither_loops''
-        halting_problem_assuming_dither_copy by auto
+        halting_problem_assuming_dither_copy
+  by auto
 
 
 text \<open>
@@ -459,11 +463,15 @@ lemma "a \<oplus> Some = a"
   unfolding ocomp_def
   using option.simps(5) by force
 
-lemma "(\<lambda>_. None) \<oplus> a = (\<lambda>_. None)"
+(* TODO:
+lemma "Some \<oplus> a = a"
+*)
+
+lemma "(\<lambda>_.None) \<oplus> a = (\<lambda>_.None)"
   unfolding ocomp_def
   by (simp add: option.case_eq_if)
 
-lemma "a \<oplus> (\<lambda>_. None) = (\<lambda>_. None)"
+lemma "a \<oplus> (\<lambda>_.None) = (\<lambda>_.None)"
   unfolding ocomp_def
   by (simp add: option.case_eq_if)
 
@@ -471,8 +479,6 @@ locale computable_universe_carrier =
   fixes F :: "(nat\<rightharpoonup>nat) set"
   fixes pull_up :: "(nat\<rightharpoonup>nat) \<Rightarrow> nat"
   
-  (*assumes id_in_F: "Some \<in> F"
-  assumes bot_in_F: "(\<lambda>_.None) \<in> F"*)
   assumes countable: "inj_on pull_up F"
   assumes comp_closed: "\<lbrakk>a \<in> F; b \<in> F\<rbrakk> \<Longrightarrow> a \<oplus> b \<in> F"
 begin
@@ -485,13 +491,13 @@ begin
   lemma sanity_pushing_down_1: "\<exists>f. pull_up f = n \<longrightarrow> push_down (Some n) = f"
     by blast
 
-  (*
+  (* TODO:
   lemma sanity_pushing_down_2: "\<forall>f. pull_up f \<noteq> n \<longrightarrow> push_down (Some n) = (\<lambda>_.None)"
     unfolding push_down_def
-    sledgehammer
     
   lemma pushing_only_in_F: "\<forall>x. push_down x \<in> F"
-    using bot_in_F push_pull_inv sanity_pushing_down_2 by blast
+    using bot_in_F push_pull_inv sanity_pushing_down_2
+    by blast
   *)
 end
 
@@ -674,48 +680,6 @@ lemma countable_turing_F: "inj_on turing_pull_up turing_F"
       imageE mem_Collect_eq nat_to_tm_is_inv_of_tm_to_nat someI_ex some_eq_ex turing_F_def
       turing_pull_up_def verit_sko_ex' verit_sko_forall)
 
-(*
-(* TODO:
-(*Identity Turing machine*)
-definition "identity_turing_machine p \<equiv> (composable_tm0 p) \<and> (\<forall>n i::nat. (is_final (steps0 (1, ([], <i>)) p n)) \<and> (\<exists>c. steps0 (1, ([], <i>)) p n = (c, [], <i>)))"
-
-lemma identity_turing_machine_exists: "\<exists>id_p. identity_turing_machine id_p"
-  unfolding identity_turing_machine_def
-  sorry
-
-lemma identity_turing_machine_is_Some: "identity_turing_machine id_p \<Longrightarrow> induce_F_from_tprog0 id_p = Some"
-  by (metis at_least_one_step identity_turing_machine_def is_final_eq length_greater_0_conv)
-
-lemma identity_in_turing_F: "Some \<in> turing_F"
-  unfolding identity_turing_machine_def
-  using identity_turing_machine_exists identity_turing_machine_is_Some composable_tprog_in_turing_F
-  by (metis identity_turing_machine_def)
-*)
-lemma identity_in_turing_F: "Some \<in> turing_F" sorry
-
-(*Bottom Turing machine*)
-definition tm_bot :: "instr list" where
-"tm_bot = [(Nop, 1), (Nop, 1)]"
-
-lemma "composable_tm0 tm_bot"
-  using composable_tm.simps tm_bot_def
-  sorry
-
-definition "bottom_turing_machine p \<equiv> (composable_tm0 p) \<and> (\<forall>i::nat. \<nexists>n. (is_final (steps0 (1, ([], <i>)) p n)))"
-
-lemma bottom_turing_machine_exists: "\<exists>bot_p. bottom_turing_machine bot_p"
-  unfolding bottom_turing_machine_def
-  sorry
-
-lemma bottom_turing_machine_is_None: "bottom_turing_machine bot_p \<Longrightarrow> induce_F_from_tprog0 bot_p =  (\<lambda>_.None)"
-  by (meson bottom_turing_machine_def induce_F_from_tprog0_def)
-
-lemma bot_in_turing_F: "(\<lambda>_.None) \<in> turing_F"
-  unfolding bottom_turing_machine_def
-  using bottom_turing_machine_exists bottom_turing_machine_is_None composable_tprog_in_turing_F
-  by (metis bottom_turing_machine_def)
-*)
-
 (*turing_F closed under \<oplus> and equivalent with |+|*)
 lemma "\<And>a. a \<in> turing_F \<Longrightarrow> \<exists>p. induce_F_from_tprog0 p = a"
   by (metis imageE turing_F_def)
@@ -733,15 +697,13 @@ lemma closed_turing_F: "\<And>a b. a \<in> turing_F \<Longrightarrow> b \<in> tu
 (*Invoke the first half*)
 interpretation computable_universe_carrier turing_F turing_pull_up
   apply unfold_locales
-  (*apply (simp add: identity_in_turing_F)
-  apply (simp add: bot_in_turing_F)*)
   apply (simp add: countable_turing_F)
   apply (simp add: closed_turing_F)
   done
 
 (*Invoke the second half*)
 definition nat_of_nat_tap_prod :: "(nat \<times> nat) \<Rightarrow> nat" where
-"nat_of_nat_tap_prod t = to_nat (<t>)"
+"nat_of_nat_tap_prod t = to_nat (<to_nat t>)"
 
 definition "turing_dither = induce_F_from_tprog0 tm_dither"
 definition "turing_copy = induce_F_from_tprog0 tm_copy"

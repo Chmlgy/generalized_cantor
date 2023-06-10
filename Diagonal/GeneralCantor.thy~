@@ -459,15 +459,11 @@ lemma "a \<oplus> Some = a"
   unfolding ocomp_def
   using option.simps(5) by force
 
-lemma "Some \<oplus> a = a"
-  unfolding ocomp_def
-  oops (*I don't know why but sledgehammer fails here*)
-
-lemma "(\<lambda>_. None) \<oplus> a = (\<lambda>_. None)"
+lemma "(\<lambda>_.None) \<oplus> a = (\<lambda>_.None)"
   unfolding ocomp_def
   by (simp add: option.case_eq_if)
 
-lemma "a \<oplus> (\<lambda>_. None) = (\<lambda>_. None)"
+lemma "a \<oplus> (\<lambda>_.None) = (\<lambda>_.None)"
   unfolding ocomp_def
   by (simp add: option.case_eq_if)
 
@@ -475,8 +471,6 @@ locale computable_universe_carrier =
   fixes F :: "(nat\<rightharpoonup>nat) set"
   fixes pull_up :: "(nat\<rightharpoonup>nat) \<Rightarrow> nat"
   
-  assumes id_in_F: "Some \<in> F"
-  assumes bot_in_F: "(\<lambda>_.None) \<in> F"
   assumes countable: "inj_on pull_up F"
   assumes comp_closed: "\<lbrakk>a \<in> F; b \<in> F\<rbrakk> \<Longrightarrow> a \<oplus> b \<in> F"
 begin
@@ -489,7 +483,7 @@ begin
   lemma sanity_pushing_down_1: "\<exists>f. pull_up f = n \<longrightarrow> push_down (Some n) = f"
     by blast
 
-  (*
+  (* TODO:
   lemma sanity_pushing_down_2: "\<forall>f. pull_up f \<noteq> n \<longrightarrow> push_down (Some n) = (\<lambda>_.None)"
     unfolding push_down_def
     sledgehammer
@@ -585,19 +579,20 @@ begin
 end
 
 locale computable_universe_paired = computable_universe_carrier +
-  fixes \<alpha> \<Delta> :: "(nat\<rightharpoonup>nat)"
+  fixes \<alpha> \<Delta>:: "(nat\<rightharpoonup>nat)"
+  fixes pair_to_nat :: "(nat \<times> nat) \<Rightarrow> nat"
 
   assumes alpha_in_f: "\<alpha> \<in> F"
-  assumes alpha: "\<alpha> 1 = None" "\<alpha> 0 = Some 1"
+  assumes alpha: "\<alpha> 0 = None" "\<alpha> 1 = Some 1"
 
 
   assumes delta_in_f: "\<Delta> \<in> F"
-  assumes delta: "\<And>f. f \<in> F \<Longrightarrow> (f \<oplus> \<Delta>) x = f (to_nat (x, x))"
+  assumes delta: "\<And>f. f \<in> F \<Longrightarrow> (f \<oplus> \<Delta>) x = f (pair_to_nat (x, x))"
 begin
   theorem locale_cantor:
     fixes H :: "(nat\<rightharpoonup>nat)"
 
-    assumes H_behaviour: "\<And>f (c::nat). f \<in> F \<Longrightarrow>  H (to_nat (pull_up f, c)) = (case f c of Some _ \<Rightarrow> Some 1 | None \<Rightarrow> Some 0)"
+    assumes H_behaviour: "\<And>f (c::nat). f \<in> F \<Longrightarrow>  H (pair_to_nat (pull_up f, c)) = (case f c of Some _ \<Rightarrow> Some 0 | None \<Rightarrow> Some 1)"
 
     shows "H \<notin> F"
   proof (rule ccontr)
@@ -607,58 +602,58 @@ begin
     define contra where "contra = \<alpha> \<oplus> H \<oplus> \<Delta>"
     have contra_in_F: "contra \<in> F" by (simp add: \<open>H \<in> F\<close> alpha_in_f comp_closed contra_def delta_in_f)
 
-    have possible_H: "H (to_nat ((pull_up contra), (pull_up contra))) = Some 1 \<or> H (to_nat ((pull_up contra), (pull_up contra))) = Some 0"
+    have possible_H: "H (pair_to_nat ((pull_up contra), (pull_up contra))) = Some 1 \<or> H (pair_to_nat ((pull_up contra), (pull_up contra))) = Some 0"
       by (simp add: alpha(2) assms contra_in_F option.case_eq_if)
 
     show "False"
     proof cases
-      assume one: "H (to_nat ((pull_up contra), (pull_up contra))) = Some 1"
+      assume zero: "H (pair_to_nat ((pull_up contra), (pull_up contra))) = Some 0"
       hence contra_some: "\<exists>n. contra (pull_up contra) = Some n"
         by (metis UNIV_I assms chi_fun_0_iff chi_fun_1_I contra_in_F option.exhaust_sel option.simps(4))
 
       have "contra (pull_up contra) = \<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra)))"
         by (metis contra_some contra_def ocomp_assoc ocomp_def option.case_eq_if option.distinct(1) option.simps(4))
       moreover
-      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (H (to_nat ((pull_up contra), (pull_up contra)))))"
+      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (H (pair_to_nat ((pull_up contra), (pull_up contra)))))"
         by (simp add: \<open>H \<in> F\<close> delta)
       moreover
-      have "\<alpha> (the (H (to_nat ((pull_up contra), (pull_up contra))))) = \<alpha> 1"
-        by (simp add: one option.sel)
+      have "\<alpha> (the (H (pair_to_nat ((pull_up contra), (pull_up contra))))) = \<alpha> 0"
+        by (simp add: zero option.sel)
       ultimately
       have contra_none: "contra (pull_up contra) = None"
         using alpha(1) by presburger
 
       show "False" using contra_some contra_none by simp
     next
-      assume not_one: "H (to_nat ((pull_up contra), (pull_up contra))) \<noteq> Some 1"
-      hence zero: "H (to_nat ((pull_up contra), (pull_up contra))) = Some 0" using possible_H by blast
+      assume not_zero: "H (pair_to_nat ((pull_up contra), (pull_up contra))) \<noteq> Some 0"
+      hence one: "H (pair_to_nat ((pull_up contra), (pull_up contra))) = Some 1" using possible_H by blast
       hence contra_none: "contra (pull_up contra) = None"
-        by (metis assms contra_in_F not_one option.case_eq_if)
+        by (metis assms contra_in_F  not_zero option.case_eq_if)
 
       have "contra (pull_up contra) = \<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra)))"
-        by (metis \<open>H \<in> F\<close> contra_def delta ocomp_assoc ocomp_def option.sel option.simps(5) zero)
+        by (metis \<open>H \<in> F\<close> contra_def delta ocomp_assoc ocomp_def option.sel option.simps(5) one)
       moreover
-      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (H (to_nat ((pull_up contra), (pull_up contra)))))"
+      have "\<alpha> (the ((H \<oplus> \<Delta>) (pull_up contra))) = \<alpha> (the (H (pair_to_nat ((pull_up contra), (pull_up contra)))))"
         by (simp add: \<open>H \<in> F\<close> delta)
       moreover
-      have "\<alpha> (the (H (to_nat ((pull_up contra), (pull_up contra))))) = \<alpha> 0"
-        by (simp add: zero option.sel)
+      have "\<alpha> (the (H (pair_to_nat ((pull_up contra), (pull_up contra))))) = \<alpha> 1"
+        by (simp add: one option.sel)
       ultimately
       have contra_some: "\<exists>n. contra (pull_up contra) = Some n"
-        by (simp add: alpha(2))
+        using alpha(2) by auto
 
-      show "False" using contra_none contra_some by simp
+      show "False" using contra_some contra_none by simp
     qed
   qed
 end
 
+(*Turing carrier set*)
 lemma countable_tape: "from_nat (to_nat (tp::tape)) = tp"
   by simp
 
 definition induce_F_from_tprog0 :: "tprog0 \<Rightarrow> nat \<Rightarrow> nat option" where
-"induce_F_from_tprog0 p input_tp = (if (\<exists>n. is_final (steps0 (1, from_nat input_tp) p n)) 
-                                    then (let (s, l, r) = (steps0 (1, from_nat input_tp) p (SOME n. is_final(steps0 (1, from_nat input_tp) p n)))
-                                          in Some (to_nat (l, r)))
+"induce_F_from_tprog0 p input_tp = (if (\<exists>n. is_final (steps0 (1, ([], <input_tp>)) p n) \<and> (\<exists>c l r::nat. steps0 (1, ([], <input_tp>)) p n = (c, Bk \<up> l, <r>))) 
+                                    then Some (SOME r. \<exists>c l. steps0 (1, ([], <input_tp>)) p (SOME n. is_final (steps0 (1, ([], <input_tp>)) p n)) = (c, Bk \<up> l, <r>))
                                     else None)"
 
 definition turing_F :: "(nat\<rightharpoonup>nat) set" where
@@ -667,14 +662,9 @@ definition turing_F :: "(nat\<rightharpoonup>nat) set" where
 lemma composable_tprog_in_turing_F: "\<And>p. composable_tm0 p \<Longrightarrow> induce_F_from_tprog0 p \<in> turing_F"
   by (simp add: image_eqI turing_F_def)
 
+(*Carrier set functions back to Turing and then to nat*)
 definition turing_pull_up :: "(nat\<rightharpoonup>nat) \<Rightarrow> nat" where
 "turing_pull_up f = (if f \<in> turing_F then tm_to_nat (SOME p. induce_F_from_tprog0 p = f) else 0)"
-
-lemma identity_in_turing_F: "Some \<in> turing_F"
-  sorry
-
-lemma bot_in_turing_F: "(\<lambda>_.None) \<in> turing_F"
-  sorry
 
 lemma countable_turing_F: "inj_on turing_pull_up turing_F"
   unfolding inj_on_def turing_pull_up_def using inj_tm_to_nat
@@ -682,18 +672,49 @@ lemma countable_turing_F: "inj_on turing_pull_up turing_F"
       imageE mem_Collect_eq nat_to_tm_is_inv_of_tm_to_nat someI_ex some_eq_ex turing_F_def
       turing_pull_up_def verit_sko_ex' verit_sko_forall)
 
-lemma closed_turing_F: "\<And>a b. a \<in> turing_F \<Longrightarrow> b \<in> turing_F \<Longrightarrow> a \<oplus> b \<in> turing_F"
+(*turing_F closed under \<oplus> and equivalent with |+|*)
+lemma "\<And>a. a \<in> turing_F \<Longrightarrow> \<exists>p. induce_F_from_tprog0 p = a"
+  by (metis imageE turing_F_def)
+
+lemma "\<And>p1 p2. composable_tm0 p1 \<Longrightarrow> composable_tm0 p2 \<Longrightarrow> induce_F_from_tprog0 (p2 |+| p1) \<in> turing_F"
+  using seq_tm_composable composable_tprog_in_turing_F by blast
+
+lemma seq_tm_oplus_correspondence: "\<And>p1 p2. composable_tm0 p1 \<Longrightarrow> composable_tm0 p2 \<Longrightarrow>
+        induce_F_from_tprog0 (p2 |+| p1) = (induce_F_from_tprog0 p1) \<oplus> (induce_F_from_tprog0 p2)"
   sorry
 
+lemma closed_turing_F: "\<And>a b. a \<in> turing_F \<Longrightarrow> b \<in> turing_F \<Longrightarrow> a \<oplus> b \<in> turing_F"
+  by (metis (no_types, lifting) composable_tprog_in_turing_F seq_tm_oplus_correspondence f_inv_into_f inv_into_into mem_Collect_eq seq_tm_composable turing_F_def)
+
+(*Invoke the first half*)
 interpretation computable_universe_carrier turing_F turing_pull_up
   apply unfold_locales
-  apply (simp add: identity_in_turing_F)
-  apply (simp add: bot_in_turing_F)
   apply (simp add: countable_turing_F)
   apply (simp add: closed_turing_F)
   done
 
-interpretation computable_universe_paired turing_F turing_pull_up turing_dither turing_copy
+(*Invoke the second half*)
+definition nat_of_nat_tap_prod :: "(nat \<times> nat) \<Rightarrow> nat" where
+"nat_of_nat_tap_prod t = to_nat (<to_nat t>)"
+
+definition "turing_dither = induce_F_from_tprog0 tm_dither"
+definition "turing_copy = induce_F_from_tprog0 tm_copy"
+
+lemma turing_dither_in_turing_F: "turing_dither \<in> turing_F"
+  unfolding turing_dither_def
+  using composable_tm0_tm_dither composable_tprog_in_turing_F by blast
+
+lemma turing_copy_in_turing_F: "turing_copy \<in> turing_F"
+  unfolding turing_copy_def
+  using composable_tm0_tm_copy composable_tprog_in_turing_F by blast
+
+lemma turing_dither_loops: "turing_dither 1 = Some 1"
+  sorry
+
+lemma turing_dither_halts: "turing_dither 0 = None"
+  sorry
+
+interpretation computable_universe_paired turing_F turing_pull_up turing_dither turing_copy nat_of_nat_tap_prod
   apply unfold_locales
   oops
 

@@ -241,11 +241,16 @@ instance action :: countable
 instance cell :: countable
   by countable_datatype
 
+lemma "from_nat (to_nat (p::tprog0)) = p"
+  by simp
+
+definition "tprog0_accepts_num p n \<equiv> \<lbrace>\<lambda>tap. tap = ([], <n::nat>)\<rbrace> p \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace>"
+
 theorem "Non-re_Languages":
-  assumes surjectivity: "surj TMC_has_num_list_res"
+  assumes surjectivity: "surj tprog0_accepts_num"
   shows "False"
-  apply(rule Abstracted_Cantor[of TMC_has_num_list_res Not nat_list_to_tm tm_to_nat_list])
-  apply(auto simp add: surjectivity nat_list_to_tm_is_inv_of_tm_to_nat_list)
+  apply(rule Abstracted_Cantor[of tprog0_accepts_num Not from_nat to_nat])
+  apply(auto simp add: surjectivity)
   done
 
 
@@ -463,10 +468,6 @@ lemma "a \<oplus> Some = a"
   unfolding ocomp_def
   using option.simps(5) by force
 
-(* TODO:
-lemma "Some \<oplus> a = a"
-*)
-
 lemma "(\<lambda>_.None) \<oplus> a = (\<lambda>_.None)"
   unfolding ocomp_def
   by (simp add: option.case_eq_if)
@@ -490,15 +491,6 @@ begin
 
   lemma sanity_pushing_down_1: "\<exists>f. pull_up f = n \<longrightarrow> push_down (Some n) = f"
     by blast
-
-  (* TODO:
-  lemma sanity_pushing_down_2: "\<forall>f. pull_up f \<noteq> n \<longrightarrow> push_down (Some n) = (\<lambda>_.None)"
-    unfolding push_down_def
-    
-  lemma pushing_only_in_F: "\<forall>x. push_down x \<in> F"
-    using bot_in_F push_pull_inv sanity_pushing_down_2
-    by blast
-  *)
 end
 
 locale computable_universe_curried = computable_universe_carrier +
@@ -681,10 +673,10 @@ lemma countable_turing_F: "inj_on turing_pull_up turing_F"
       turing_pull_up_def verit_sko_ex' verit_sko_forall)
 
 (*turing_F closed under \<oplus> and equivalent with |+|*)
-lemma "\<And>a. a \<in> turing_F \<Longrightarrow> \<exists>p. induce_F_from_tprog0 p = a"
-  by (metis imageE turing_F_def)
+lemma turing_F_from_composable_tm: "\<And>a. a \<in> turing_F \<Longrightarrow> \<exists>p. (composable_tm0 p) \<and> (induce_F_from_tprog0 p = a)"
+  by (metis (no_types, lifting) f_inv_into_f inv_into_into mem_Collect_eq turing_F_def)
 
-lemma "\<And>p1 p2. composable_tm0 p1 \<Longrightarrow> composable_tm0 p2 \<Longrightarrow> induce_F_from_tprog0 (p2 |+| p1) \<in> turing_F"
+lemma seq_tm_stays_in_turing_F: "\<And>p1 p2. composable_tm0 p1 \<Longrightarrow> composable_tm0 p2 \<Longrightarrow> induce_F_from_tprog0 (p2 |+| p1) \<in> turing_F"
   using seq_tm_composable composable_tprog_in_turing_F by blast
 
 lemma seq_tm_oplus_correspondence: "\<And>p1 p2. composable_tm0 p1 \<Longrightarrow> composable_tm0 p2 \<Longrightarrow>
@@ -710,20 +702,26 @@ definition "turing_copy = induce_F_from_tprog0 tm_copy"
 
 lemma turing_dither_in_turing_F: "turing_dither \<in> turing_F"
   unfolding turing_dither_def
-  using composable_tm0_tm_dither composable_tprog_in_turing_F by blast
+  using composable_tm0_tm_dither composable_tprog_in_turing_F
+  by blast
 
 lemma turing_copy_in_turing_F: "turing_copy \<in> turing_F"
   unfolding turing_copy_def
-  using composable_tm0_tm_copy composable_tprog_in_turing_F by blast
+  using composable_tm0_tm_copy composable_tprog_in_turing_F
+  by blast
 
-lemma turing_dither_loops: "turing_dither 1 = Some 1"
+lemma turing_dither_halts: "turing_dither 1 = Some 1"
   sorry
 
-lemma turing_dither_halts: "turing_dither 0 = None"
+lemma turing_dither_loops: "turing_dither 0 = None"
   sorry
 
 interpretation computable_universe_paired turing_F turing_pull_up turing_dither turing_copy nat_of_nat_tap_prod
   apply unfold_locales
+  using turing_dither_in_turing_F apply simp
+  using turing_dither_loops apply simp
+  using One_nat_def turing_dither_halts apply fastforce
+  using turing_copy_in_turing_F apply simp
   oops
 
 end

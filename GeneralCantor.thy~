@@ -1,14 +1,16 @@
 section \<open>Generalized Cantor's Theorem and Instances\<close>
 
-theory GeneralCantor imports Complex_Main "HOL-Library.Countable" "HOL-Analysis.Analysis"
-  "HOL-ZF.HOLZF" "~~/afp-2023-05-17/thys/Universal_Turing_Machine/HaltingProblems_K_H"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/Turing_aux"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/Numerals_Ex"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/TuringDecidable"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/HaltingProblems_K_aux"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/TuringComputable"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/DitherTM"
-  "~~/afp-2023-05-17/thys/Universal_Turing_Machine/CopyTM"
+theory GeneralCantor imports
+  Complex_Main
+  "HOL-Library.Countable"
+  "HOL-Analysis.Analysis"
+  "HOL-ZF.HOLZF"
+  "Universal_Turing_Machine.Turing_aux"
+  "Universal_Turing_Machine.TuringDecidable"
+  "Universal_Turing_Machine.HaltingProblems_K_aux"
+  "Universal_Turing_Machine.TuringComputable"
+  "Universal_Turing_Machine.DitherTM"
+  "Universal_Turing_Machine.CopyTM"
 begin
 
 text \<open>
@@ -261,7 +263,8 @@ lemma halts_alt_def: "halts p ns = (\<exists>n. is_final (steps0 (1, [], <ns>) p
   by force
 
 lemma not_halts: "\<not> halts p ns \<longrightarrow> \<lbrace>\<lambda>tap. tap = ([], <ns::nat>)\<rbrace> p \<up>"
-  using Hoare_unhaltI halts_alt_def by presburger
+  using Hoare_unhaltI halts_alt_def
+  by presburger
 
 lemma not_halts_alt: "\<not> halts p ns \<longrightarrow> (\<nexists>n. is_final (steps0 (1, [], <ns>) p n))"
   using halts_def Hoare_halt_def
@@ -442,7 +445,8 @@ theorem "halting_problem":
   shows "\<nexists> H. decides_halting H"
   using One_nat_def append.simps(1) append.simps(2) replicate.simps(1) replicate.simps(2)
         tape_of_nat_def tm_copy_correct tm_dither_halts'' tm_dither_loops''
-        halting_problem_assuming_dither_copy by auto
+        halting_problem_assuming_dither_copy
+  by auto
 
 
 text \<open>
@@ -458,6 +462,10 @@ lemma ocomp_assoc [simp]: "a \<oplus> (b \<oplus> c) = a \<oplus> b \<oplus> c"
 lemma "a \<oplus> Some = a"
   unfolding ocomp_def
   using option.simps(5) by force
+
+(* TODO:
+lemma "Some \<oplus> a = a"
+*)
 
 lemma "(\<lambda>_.None) \<oplus> a = (\<lambda>_.None)"
   unfolding ocomp_def
@@ -486,10 +494,10 @@ begin
   (* TODO:
   lemma sanity_pushing_down_2: "\<forall>f. pull_up f \<noteq> n \<longrightarrow> push_down (Some n) = (\<lambda>_.None)"
     unfolding push_down_def
-    sledgehammer
     
   lemma pushing_only_in_F: "\<forall>x. push_down x \<in> F"
-    using bot_in_F push_pull_inv sanity_pushing_down_2 by blast
+    using bot_in_F push_pull_inv sanity_pushing_down_2
+    by blast
   *)
 end
 
@@ -673,10 +681,10 @@ lemma countable_turing_F: "inj_on turing_pull_up turing_F"
       turing_pull_up_def verit_sko_ex' verit_sko_forall)
 
 (*turing_F closed under \<oplus> and equivalent with |+|*)
-lemma "\<And>a. a \<in> turing_F \<Longrightarrow> \<exists>p. induce_F_from_tprog0 p = a"
-  by (metis imageE turing_F_def)
+lemma turing_F_from_composable_tm: "\<And>a. a \<in> turing_F \<Longrightarrow> \<exists>p. (composable_tm0 p) \<and> (induce_F_from_tprog0 p = a)"
+  by (metis (no_types, lifting) f_inv_into_f inv_into_into mem_Collect_eq turing_F_def)
 
-lemma "\<And>p1 p2. composable_tm0 p1 \<Longrightarrow> composable_tm0 p2 \<Longrightarrow> induce_F_from_tprog0 (p2 |+| p1) \<in> turing_F"
+lemma seq_tm_stays_in_turing_F: "\<And>p1 p2. composable_tm0 p1 \<Longrightarrow> composable_tm0 p2 \<Longrightarrow> induce_F_from_tprog0 (p2 |+| p1) \<in> turing_F"
   using seq_tm_composable composable_tprog_in_turing_F by blast
 
 lemma seq_tm_oplus_correspondence: "\<And>p1 p2. composable_tm0 p1 \<Longrightarrow> composable_tm0 p2 \<Longrightarrow>
@@ -702,20 +710,26 @@ definition "turing_copy = induce_F_from_tprog0 tm_copy"
 
 lemma turing_dither_in_turing_F: "turing_dither \<in> turing_F"
   unfolding turing_dither_def
-  using composable_tm0_tm_dither composable_tprog_in_turing_F by blast
+  using composable_tm0_tm_dither composable_tprog_in_turing_F
+  by blast
 
 lemma turing_copy_in_turing_F: "turing_copy \<in> turing_F"
   unfolding turing_copy_def
-  using composable_tm0_tm_copy composable_tprog_in_turing_F by blast
+  using composable_tm0_tm_copy composable_tprog_in_turing_F
+  by blast
 
-lemma turing_dither_loops: "turing_dither 1 = Some 1"
+lemma turing_dither_halts: "turing_dither 1 = Some 1"
   sorry
 
-lemma turing_dither_halts: "turing_dither 0 = None"
+lemma turing_dither_loops: "turing_dither 0 = None"
   sorry
 
 interpretation computable_universe_paired turing_F turing_pull_up turing_dither turing_copy nat_of_nat_tap_prod
   apply unfold_locales
+  using turing_dither_in_turing_F apply simp
+  using turing_dither_loops apply simp
+  using One_nat_def turing_dither_halts apply fastforce
+  using turing_copy_in_turing_F apply simp
   oops
 
 end

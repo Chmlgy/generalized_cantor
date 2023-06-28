@@ -646,11 +646,13 @@ begin
   qed
 end
 
-(*Turing carrier set*)
+(*Turing carrier set -- TODO: add blanks to input/output tapes. check with peter about the soundness of the definition*)
 definition induce_F_from_tprog0 :: "tprog0 \<Rightarrow> nat \<Rightarrow> nat option" where
-"induce_F_from_tprog0 p inp = (if (\<exists>n. is_final (steps0 (1, ([], <inp>)) p n) \<and> (\<exists>c l r::nat. steps0 (1, ([], <inp>)) p n = (c, Bk \<up> l, <r>))) 
-                                    then Some (SOME r. \<exists>c l. steps0 (1, ([], <inp>)) p (SOME n. is_final (steps0 (1, ([], <inp>)) p n)) = (c, Bk \<up> l, <r>))
-                                    else None)"
+"induce_F_from_tprog0 p inp = (if (\<exists>n c (r::nat) k1 k2 l1 l2. is_final (steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n) \<and> steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n = (c, Bk \<up> k2, <r> @ Bk \<up> l2))
+                               then Some (SOME r. \<exists>n c k1 k2 l1 l2. steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n = (c, Bk \<up> k2, <r> @ Bk \<up> l2))
+                               else None)"
+
+(*\<exists>n c r k1 k2 l1 l2. is_final (steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n) \<and> steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n = (c, Bk \<up> k2, <r> @ Bk \<up> l2)*)
 
 definition turing_F :: "(nat\<rightharpoonup>nat) set" where
 "turing_F = induce_F_from_tprog0 ` {p. composable_tm0 p}"
@@ -706,13 +708,21 @@ lemma turing_dither_in_turing_F: "turing_dither \<in> turing_F"
 definition tm_doubling :: "tprog0" where
 "tm_doubling = [(WO, 2), (R, 1), (L, 3), (R, 2), (WB, 0), (WB, 0)]"
 
-lemma tm_doubling_removes_Bk: "\<lbrace>\<lambda>tap. tap = ([Bk], <(x::nat, x)>)\<rbrace> tm_doubling \<lbrace>\<lambda>tap. tap = ([Bk], <(x + x)> @ [Bk])\<rbrace>"
+lemma tm_doubling_removes_Bk: "\<lbrace>\<lambda>tap. tap = ([Bk], <(x::nat, x)>)\<rbrace> tm_doubling \<lbrace>\<lambda>tap. \<exists>l. tap = ([Bk], <(x + x)> @ Bk \<up> l)\<rbrace>"
   sorry
 
 lemma composable_tm0_tm_doubling[intro, simp]: "composable_tm0 tm_doubling"
   by (auto simp: tm_doubling_def)
 
 definition "tm_modified_copy = tm_copy |+| tm_doubling"
+
+lemma oc_arrow_to_encode: "Oc \<up> (Suc n) = <n>"
+  by (simp add: tape_of_nat_def)
+
+lemma tm_modified_copy_hoare: "\<lbrace>\<lambda>tap. tap = ([], <x::nat>)\<rbrace> tm_modified_copy \<lbrace>\<lambda>tap. \<exists>l. tap = ([Bk], <(x + x)> @ Bk \<up> l)\<rbrace>"
+  using tm_modified_copy_def tm_doubling_removes_Bk tm_copy_correct oc_arrow_to_encode
+  Hoare_plus_halt composable_tm0_tm_copy Hoare_halt_def
+  by (metis (no_types, lifting))
 
 lemma composable_tm0_tm_modified_copy[intro, simp]: "composable_tm0 tm_modified_copy"
   by (metis composable_tm0_tm_copy composable_tm0_tm_doubling seq_tm_composable tm_modified_copy_def)

@@ -275,10 +275,10 @@ lemma not_halts_alt: "\<not> halts p ns \<longrightarrow> (\<nexists>n. is_final
   using halts_def Hoare_halt_def
   by blast
 
-definition "decides_halting H \<equiv> (\<forall>(p::tprog0) (ns::nat).
+definition "decides_halting H \<equiv> \<forall>(p::tprog0) (ns::nat).
   \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat p, ns)>)\<rbrace>
    H
-  \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <(if halts p ns then 0::nat else 1::nat)> @ Bk \<up> l)\<rbrace>)"
+  \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <(if halts p ns then 0::nat else 1::nat)> @ Bk \<up> l)\<rbrace>"
 
 (*------------------------------TODO: AFP entry should include this.------------------------------*)
 lemma Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_aux: "\<lbrace>\<lambda>tap. tap = (cl', cl)\<rbrace> tm \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>tap. tap = (cl', cl)\<rbrace> mk_composable0 tm \<lbrace>Q\<rbrace>" 
@@ -446,8 +446,7 @@ proof (rule ccontr)
   qed
 qed
 
-theorem "halting_problem":
-  shows "\<nexists> H. decides_halting H"
+theorem "halting_problem": "\<nexists> H. decides_halting H"
   using One_nat_def append.simps(1) append.simps(2) replicate.simps(1) replicate.simps(2)
         tape_of_nat_def tm_copy_correct tm_dither_halts'' tm_dither_loops''
         halting_problem_assuming_dither_copy
@@ -648,12 +647,9 @@ begin
 end
 
 (*Turing carrier set*)
-lemma countable_tape: "from_nat (to_nat (tp::tape)) = tp"
-  by simp
-
 definition induce_F_from_tprog0 :: "tprog0 \<Rightarrow> nat \<Rightarrow> nat option" where
-"induce_F_from_tprog0 p input_tp = (if (\<exists>n. is_final (steps0 (1, ([], <input_tp>)) p n) \<and> (\<exists>c l r::nat. steps0 (1, ([], <input_tp>)) p n = (c, Bk \<up> l, <r>))) 
-                                    then Some (SOME r. \<exists>c l. steps0 (1, ([], <input_tp>)) p (SOME n. is_final (steps0 (1, ([], <input_tp>)) p n)) = (c, Bk \<up> l, <r>))
+"induce_F_from_tprog0 p inp = (if (\<exists>n. is_final (steps0 (1, ([], <inp>)) p n) \<and> (\<exists>c l r::nat. steps0 (1, ([], <inp>)) p n = (c, Bk \<up> l, <r>))) 
+                                    then Some (SOME r. \<exists>c l. steps0 (1, ([], <inp>)) p (SOME n. is_final (steps0 (1, ([], <inp>)) p n)) = (c, Bk \<up> l, <r>))
                                     else None)"
 
 definition turing_F :: "(nat\<rightharpoonup>nat) set" where
@@ -694,21 +690,38 @@ interpretation computable_universe_carrier turing_F turing_pull_up
   done
 
 (*Invoke the second half*)
-definition nat_of_nat_tap_prod :: "(nat \<times> nat) \<Rightarrow> nat" where
-"nat_of_nat_tap_prod t = to_nat (<to_nat t>)"
+lemma countable_tape: "from_nat (to_nat (tp::tape)) = tp"
+  by simp
+
+fun pair_plus :: "(nat \<times> nat) \<Rightarrow> nat" where
+"pair_plus (t1, t2) = t1 + t2"
 
 definition "turing_dither = induce_F_from_tprog0 tm_dither"
-definition "turing_copy = induce_F_from_tprog0 tm_copy"
 
 lemma turing_dither_in_turing_F: "turing_dither \<in> turing_F"
   unfolding turing_dither_def
   using composable_tm0_tm_dither composable_tprog_in_turing_F
   by blast
 
+definition tm_doubling :: "tprog0" where
+"tm_doubling = [(WO, 2), (R, 1), (L, 3), (R, 2), (WB, 0), (WB, 0)]"
+
+lemma tm_doubling_removes_Bk: "\<lbrace>\<lambda>tap. tap = ([Bk], <(x::nat, x)>)\<rbrace> tm_doubling \<lbrace>\<lambda>tap. tap = ([Bk], <(x + x)> @ [Bk])\<rbrace>"
+  sorry
+
+lemma composable_tm0_tm_doubling[intro, simp]: "composable_tm0 tm_doubling"
+  by (auto simp: tm_doubling_def)
+
+definition "tm_modified_copy = tm_copy |+| tm_doubling"
+
+lemma composable_tm0_tm_modified_copy[intro, simp]: "composable_tm0 tm_modified_copy"
+  by (metis composable_tm0_tm_copy composable_tm0_tm_doubling seq_tm_composable tm_modified_copy_def)
+
+definition "turing_copy = induce_F_from_tprog0 tm_modified_copy"
+
 lemma turing_copy_in_turing_F: "turing_copy \<in> turing_F"
-  unfolding turing_copy_def
-  using composable_tm0_tm_copy composable_tprog_in_turing_F
-  by blast
+  using composable_tm0_tm_modified_copy composable_tprog_in_turing_F turing_copy_def
+  by presburger
 
 lemma turing_dither_halts: "turing_dither 1 = Some 1"
   sorry
@@ -716,12 +729,16 @@ lemma turing_dither_halts: "turing_dither 1 = Some 1"
 lemma turing_dither_loops: "turing_dither 0 = None"
   sorry
 
-interpretation computable_universe_paired turing_F turing_pull_up turing_dither turing_copy nat_of_nat_tap_prod
+lemma turing_copy_copies: "\<And>f x. f \<in> turing_F \<Longrightarrow> (f \<oplus> turing_copy) x = f (pair_plus (x, x))"
+  sorry
+
+interpretation computable_universe_paired turing_F turing_pull_up turing_dither turing_copy pair_plus
   apply unfold_locales
   using turing_dither_in_turing_F apply simp
   using turing_dither_loops apply simp
   using One_nat_def turing_dither_halts apply fastforce
   using turing_copy_in_turing_F apply simp
-  oops
+  using turing_copy_copies apply simp
+  done
 
 end

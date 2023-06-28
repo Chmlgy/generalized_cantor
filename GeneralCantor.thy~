@@ -241,11 +241,16 @@ instance action :: countable
 instance cell :: countable
   by countable_datatype
 
+lemma "from_nat (to_nat (p::tprog0)) = p"
+  by simp
+
+definition "tprog0_accepts_num p n \<equiv> \<lbrace>\<lambda>tap. tap = ([], <n::nat>)\<rbrace> p \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <1::nat> @ Bk \<up> l)\<rbrace>"
+
 theorem "Non-re_Languages":
-  assumes surjectivity: "surj TMC_has_num_list_res"
+  assumes surjectivity: "surj tprog0_accepts_num"
   shows "False"
-  apply(rule Abstracted_Cantor[of TMC_has_num_list_res Not nat_list_to_tm tm_to_nat_list])
-  apply(auto simp add: surjectivity nat_list_to_tm_is_inv_of_tm_to_nat_list)
+  apply(rule Abstracted_Cantor[of tprog0_accepts_num Not from_nat to_nat])
+  apply(auto simp add: surjectivity)
   done
 
 
@@ -270,10 +275,10 @@ lemma not_halts_alt: "\<not> halts p ns \<longrightarrow> (\<nexists>n. is_final
   using halts_def Hoare_halt_def
   by blast
 
-definition "decides_halting H \<equiv> (\<forall>(p::tprog0) (ns::nat).
+definition "decides_halting H \<equiv> \<forall>(p::tprog0) (ns::nat).
   \<lbrace>\<lambda>tap. tap = ([Bk], <(tm_to_nat p, ns)>)\<rbrace>
    H
-  \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <(if halts p ns then 0::nat else 1::nat)> @ Bk \<up> l)\<rbrace>)"
+  \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <(if halts p ns then 0::nat else 1::nat)> @ Bk \<up> l)\<rbrace>"
 
 (*------------------------------TODO: AFP entry should include this.------------------------------*)
 lemma Hoare_halt_tm_impl_Hoare_halt_mk_composable0_cell_list_aux: "\<lbrace>\<lambda>tap. tap = (cl', cl)\<rbrace> tm \<lbrace>Q\<rbrace> \<Longrightarrow> \<lbrace>\<lambda>tap. tap = (cl', cl)\<rbrace> mk_composable0 tm \<lbrace>Q\<rbrace>" 
@@ -441,8 +446,7 @@ proof (rule ccontr)
   qed
 qed
 
-theorem "halting_problem":
-  shows "\<nexists> H. decides_halting H"
+theorem "halting_problem": "\<nexists> H. decides_halting H"
   using One_nat_def append.simps(1) append.simps(2) replicate.simps(1) replicate.simps(2)
         tape_of_nat_def tm_copy_correct tm_dither_halts'' tm_dither_loops''
         halting_problem_assuming_dither_copy
@@ -462,10 +466,6 @@ lemma ocomp_assoc [simp]: "a \<oplus> (b \<oplus> c) = a \<oplus> b \<oplus> c"
 lemma "a \<oplus> Some = a"
   unfolding ocomp_def
   using option.simps(5) by force
-
-(* TODO:
-lemma "Some \<oplus> a = a"
-*)
 
 lemma "(\<lambda>_.None) \<oplus> a = (\<lambda>_.None)"
   unfolding ocomp_def
@@ -490,15 +490,6 @@ begin
 
   lemma sanity_pushing_down_1: "\<exists>f. pull_up f = n \<longrightarrow> push_down (Some n) = f"
     by blast
-
-  (* TODO:
-  lemma sanity_pushing_down_2: "\<forall>f. pull_up f \<noteq> n \<longrightarrow> push_down (Some n) = (\<lambda>_.None)"
-    unfolding push_down_def
-    
-  lemma pushing_only_in_F: "\<forall>x. push_down x \<in> F"
-    using bot_in_F push_pull_inv sanity_pushing_down_2
-    by blast
-  *)
 end
 
 locale computable_universe_curried = computable_universe_carrier +
@@ -656,12 +647,9 @@ begin
 end
 
 (*Turing carrier set*)
-lemma countable_tape: "from_nat (to_nat (tp::tape)) = tp"
-  by simp
-
 definition induce_F_from_tprog0 :: "tprog0 \<Rightarrow> nat \<Rightarrow> nat option" where
-"induce_F_from_tprog0 p input_tp = (if (\<exists>n. is_final (steps0 (1, ([], <input_tp>)) p n) \<and> (\<exists>c l r::nat. steps0 (1, ([], <input_tp>)) p n = (c, Bk \<up> l, <r>))) 
-                                    then Some (SOME r. \<exists>c l. steps0 (1, ([], <input_tp>)) p (SOME n. is_final (steps0 (1, ([], <input_tp>)) p n)) = (c, Bk \<up> l, <r>))
+"induce_F_from_tprog0 p inp = (if (\<exists>n. is_final (steps0 (1, ([], <inp>)) p n) \<and> (\<exists>c l r::nat. steps0 (1, ([], <inp>)) p n = (c, Bk \<up> l, <r>))) 
+                                    then Some (SOME r. \<exists>c l. steps0 (1, ([], <inp>)) p (SOME n. is_final (steps0 (1, ([], <inp>)) p n)) = (c, Bk \<up> l, <r>))
                                     else None)"
 
 definition turing_F :: "(nat\<rightharpoonup>nat) set" where
@@ -702,8 +690,11 @@ interpretation computable_universe_carrier turing_F turing_pull_up
   done
 
 (*Invoke the second half*)
-definition nat_of_nat_tap_prod :: "(nat \<times> nat) \<Rightarrow> nat" where
-"nat_of_nat_tap_prod t = to_nat (<to_nat t>)"
+lemma countable_tape: "from_nat (to_nat (tp::tape)) = tp"
+  by simp
+
+fun nat_of_nat_tap_prod :: "(nat \<times> nat) \<Rightarrow> nat" where
+"nat_of_nat_tap_prod (t1, t2) = t1 + t2"
 
 definition "turing_dither = induce_F_from_tprog0 tm_dither"
 definition "turing_copy = induce_F_from_tprog0 tm_copy"

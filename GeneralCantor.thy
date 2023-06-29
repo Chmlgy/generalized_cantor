@@ -646,18 +646,36 @@ begin
   qed
 end
 
-(*Turing carrier set -- TODO: add blanks to input/output tapes. check with peter about the soundness of the definition*)
+(*Turing carrier set
+
+Important note: Blanks and Hoare triples might end up being too complicated of a problem to solve.
+Proving the behaviour of functions induced from machines will not be completed due to time-constraints.
+If it is wished to tackle, it might be a better idea to work with steps0 function to simply compute
+the end numeral result and return that.
+
+Deprecated def:
+(if (\<exists>n c (r::nat) k1 k2 l1 l2. is_final (steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n) \<and> steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n = (c, Bk \<up> k2, <r> @ Bk \<up> l2))
+ then Some (SOME r. \<exists>n c k1 k2 l1 l2. steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n = (c, Bk \<up> k2, <r> @ Bk \<up> l2))
+ else None)*)
 definition induce_F_from_tprog0 :: "tprog0 \<Rightarrow> nat \<Rightarrow> nat option" where
-"induce_F_from_tprog0 p inp = (if (\<exists>n c (r::nat) k1 k2 l1 l2. is_final (steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n) \<and> steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n = (c, Bk \<up> k2, <r> @ Bk \<up> l2))
-                               then Some (SOME r. \<exists>n c k1 k2 l1 l2. steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n = (c, Bk \<up> k2, <r> @ Bk \<up> l2))
+"induce_F_from_tprog0 p inp = (if (\<exists>r k l m n. \<lbrace>\<lambda>tap. tap = (Bk \<up> k, <inp> @ Bk \<up> l)\<rbrace> p \<lbrace>\<lambda>tap. tap = (Bk \<up> m, <r::nat> @ Bk \<up> n)\<rbrace>)
+                               then Some (THE r. \<exists>k l m n. \<lbrace>\<lambda>tap. tap = (Bk \<up> k, <inp> @ Bk \<up> l)\<rbrace> p \<lbrace>\<lambda>tap. tap = (Bk \<up> m, <r::nat> @ Bk \<up> n)\<rbrace>)
                                else None)"
 
-(*\<exists>n c r k1 k2 l1 l2. is_final (steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n) \<and> steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n = (c, Bk \<up> k2, <r> @ Bk \<up> l2)*)
+(*For all possible numeral input tapes the Turing machines we are interested in return numeral output*)
+definition numeral_tm0 :: "tprog0 \<Rightarrow> bool" where
+"numeral_tm0 p = (let numeral_tape = \<lambda>tap. \<exists>k l (n::nat). tap = (Bk \<up> k, <n> @ Bk \<up> l)
+                  in \<lbrace>numeral_tape\<rbrace> p \<lbrace>numeral_tape\<rbrace>)"
+
+definition "numeral_composable_tm0 p \<equiv> composable_tm0 p \<and> numeral_tm0 p"
+
+lemma sq_num_comp_tm0: "\<lbrakk>numeral_composable_tm0 p1; numeral_composable_tm0 p2\<rbrakk> \<Longrightarrow> numeral_composable_tm0 (p1 |+| p2)"
+  by (meson Hoare_plus_halt numeral_composable_tm0_def numeral_tm0_def seq_tm_composable)
 
 definition turing_F :: "(nat\<rightharpoonup>nat) set" where
-"turing_F = induce_F_from_tprog0 ` {p. composable_tm0 p}"
+"turing_F = induce_F_from_tprog0 ` {p. numeral_composable_tm0 p}"
 
-lemma composable_tprog_in_turing_F: "\<And>p. composable_tm0 p \<Longrightarrow> induce_F_from_tprog0 p \<in> turing_F"
+lemma composable_tprog_in_turing_F: "\<And>p. numeral_composable_tm0 p \<Longrightarrow> induce_F_from_tprog0 p \<in> turing_F"
   by (simp add: image_eqI turing_F_def)
 
 (*Carrier set functions back to Turing and then to nat*)
@@ -666,23 +684,23 @@ definition turing_pull_up :: "(nat\<rightharpoonup>nat) \<Rightarrow> nat" where
 
 lemma countable_turing_F: "inj_on turing_pull_up turing_F"
   unfolding inj_on_def turing_pull_up_def using inj_tm_to_nat
-  by (smt (verit, del_insts) Collect_cong Collect_mem_eq Eps_cong UNIV_I UNIV_def halting_problem
+  by (smt (verit, del_insts) Collect_cong Collect_mem_eq Eps_cong UNIV_I UNIV_def
       imageE mem_Collect_eq nat_to_tm_is_inv_of_tm_to_nat someI_ex some_eq_ex turing_F_def
       turing_pull_up_def verit_sko_ex' verit_sko_forall)
 
 (*turing_F closed under \<oplus> and equivalent with |+|*)
-lemma turing_F_from_composable_tm: "\<And>a. a \<in> turing_F \<Longrightarrow> \<exists>p. (composable_tm0 p) \<and> (induce_F_from_tprog0 p = a)"
+lemma turing_F_from_composable_tm: "\<And>a. a \<in> turing_F \<Longrightarrow> \<exists>p. (numeral_composable_tm0 p) \<and> (induce_F_from_tprog0 p = a)"
   by (metis (no_types, lifting) f_inv_into_f inv_into_into mem_Collect_eq turing_F_def)
 
-lemma seq_tm_stays_in_turing_F: "\<And>p1 p2. composable_tm0 p1 \<Longrightarrow> composable_tm0 p2 \<Longrightarrow> induce_F_from_tprog0 (p2 |+| p1) \<in> turing_F"
-  using seq_tm_composable composable_tprog_in_turing_F by blast
+lemma seq_tm_stays_in_turing_F: "\<And>p1 p2. numeral_composable_tm0 p1 \<Longrightarrow> numeral_composable_tm0 p2 \<Longrightarrow> induce_F_from_tprog0 (p2 |+| p1) \<in> turing_F"
+  using sq_num_comp_tm0 composable_tprog_in_turing_F by blast
 
-lemma seq_tm_oplus_correspondence: "\<And>p1 p2. composable_tm0 p1 \<Longrightarrow> composable_tm0 p2 \<Longrightarrow>
+lemma seq_tm_oplus_correspondence: "\<And>p1 p2. numeral_composable_tm0 p1 \<Longrightarrow> numeral_composable_tm0 p2 \<Longrightarrow>
         induce_F_from_tprog0 (p2 |+| p1) = (induce_F_from_tprog0 p1) \<oplus> (induce_F_from_tprog0 p2)"
   sorry
 
 lemma closed_turing_F: "\<And>a b. a \<in> turing_F \<Longrightarrow> b \<in> turing_F \<Longrightarrow> a \<oplus> b \<in> turing_F"
-  by (metis (no_types, lifting) composable_tprog_in_turing_F seq_tm_oplus_correspondence f_inv_into_f inv_into_into mem_Collect_eq seq_tm_composable turing_F_def)
+  by (metis seq_tm_oplus_correspondence seq_tm_stays_in_turing_F turing_F_from_composable_tm)
 
 (*Invoke the first half*)
 interpretation computable_universe_carrier turing_F turing_pull_up
@@ -691,32 +709,31 @@ interpretation computable_universe_carrier turing_F turing_pull_up
   apply (simp add: closed_turing_F)
   done
 
-(*Invoke the second half*)
 lemma countable_tape: "from_nat (to_nat (tp::tape)) = tp"
   by simp
 
 fun pair_plus :: "(nat \<times> nat) \<Rightarrow> nat" where
 "pair_plus (t1, t2) = t1 + t2"
 
-definition "turing_dither = induce_F_from_tprog0 tm_dither"
-
-lemma turing_dither_in_turing_F: "turing_dither \<in> turing_F"
-  unfolding turing_dither_def
-  using composable_tm0_tm_dither composable_tprog_in_turing_F
-  by blast
+lemma numeral_composable_tm0_tm_dither: "numeral_composable_tm0 tm_dither"
+  unfolding numeral_composable_tm0_def using composable_tm0_tm_dither
+  sorry
 
 definition tm_doubling :: "tprog0" where
-"tm_doubling = [(WO, 2), (R, 1), (L, 3), (R, 2), (WB, 0), (WB, 0)]"
-
-lemma tm_doubling_removes_Bk: "\<lbrace>\<lambda>tap. tap = ([Bk], <(x::nat, x)>)\<rbrace> tm_doubling \<lbrace>\<lambda>tap. \<exists>l. tap = ([Bk], <(x + x)> @ Bk \<up> l)\<rbrace>"
-  sorry
+"tm_doubling = [(WO, 2), (R, 1), (L, 3), (R, 2), (WB, 4), (WB, 4), (L, 5), (L, 5), (R, 0), (L, 5)]"
 
 lemma composable_tm0_tm_doubling[intro, simp]: "composable_tm0 tm_doubling"
   by (auto simp: tm_doubling_def)
 
+lemma tm_doubling_removes_Bk: "\<lbrace>\<lambda>tap. tap = ([Bk], <(x::nat, x)>)\<rbrace> tm_doubling \<lbrace>\<lambda>tap. \<exists>l. tap = ([Bk], <(x + x)> @ Bk \<up> l)\<rbrace>"
+  sorry
+
 definition "tm_modified_copy = tm_copy |+| tm_doubling"
 
-lemma oc_arrow_to_encode: "Oc \<up> (Suc n) = <n>"
+lemma composable_tm0_tm_modified_copy[intro, simp]: "composable_tm0 tm_modified_copy"
+  by (metis composable_tm0_tm_copy composable_tm0_tm_doubling seq_tm_composable tm_modified_copy_def)
+
+lemma oc_arrow_to_encode[intro, simp]: "Oc \<up> (Suc n) = <n>"
   by (simp add: tape_of_nat_def)
 
 lemma tm_modified_copy_hoare: "\<lbrace>\<lambda>tap. tap = ([], <x::nat>)\<rbrace> tm_modified_copy \<lbrace>\<lambda>tap. \<exists>l. tap = ([Bk], <(x + x)> @ Bk \<up> l)\<rbrace>"
@@ -724,31 +741,44 @@ lemma tm_modified_copy_hoare: "\<lbrace>\<lambda>tap. tap = ([], <x::nat>)\<rbra
   Hoare_plus_halt composable_tm0_tm_copy Hoare_halt_def
   by (metis (no_types, lifting))
 
-lemma composable_tm0_tm_modified_copy[intro, simp]: "composable_tm0 tm_modified_copy"
-  by (metis composable_tm0_tm_copy composable_tm0_tm_doubling seq_tm_composable tm_modified_copy_def)
+lemma numeral_composable_tm0_tm_modified_copy[intro, simp]: "numeral_composable_tm0 tm_modified_copy"
+  sorry
+
+(*inducing functions*)
+definition "turing_dither = induce_F_from_tprog0 tm_dither"
+
+lemma turing_dither_in_turing_F: "turing_dither \<in> turing_F"
+  unfolding turing_dither_def
+  using numeral_composable_tm0_tm_dither composable_tprog_in_turing_F
+  by presburger
 
 definition "turing_copy = induce_F_from_tprog0 tm_modified_copy"
 
 lemma turing_copy_in_turing_F: "turing_copy \<in> turing_F"
-  using composable_tm0_tm_modified_copy composable_tprog_in_turing_F turing_copy_def
+  using numeral_composable_tm0_tm_modified_copy composable_tprog_in_turing_F turing_copy_def
   by presburger
 
+(*dither and copy behaviour*)
 lemma turing_dither_halts: "turing_dither 1 = Some 1"
   sorry
 
 lemma turing_dither_loops: "turing_dither 0 = None"
   sorry
 
-lemma turing_copy_copies: "\<And>f x. f \<in> turing_F \<Longrightarrow> (f \<oplus> turing_copy) x = f (pair_plus (x, x))"
+lemma turing_copy_pair_plus: "turing_copy x = Some (pair_plus (x, x))"
   sorry
 
+lemma turing_copy_composed: "\<And>f x. f \<in> turing_F \<Longrightarrow> (f \<oplus> turing_copy) x = f (pair_plus (x, x))"
+  by (simp add: ocomp_def turing_copy_pair_plus)
+
+(*Invoke the second half*)
 interpretation computable_universe_paired turing_F turing_pull_up turing_dither turing_copy pair_plus
   apply unfold_locales
   using turing_dither_in_turing_F apply simp
   using turing_dither_loops apply simp
   using One_nat_def turing_dither_halts apply fastforce
   using turing_copy_in_turing_F apply simp
-  using turing_copy_copies apply simp
+  using turing_copy_composed apply simp
   done
 
 end

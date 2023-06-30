@@ -658,19 +658,19 @@ Deprecated def:
  then Some (SOME r. \<exists>n c k1 k2 l1 l2. steps0 (1, (Bk \<up> k1, <inp> @ Bk \<up> l1)) p n = (c, Bk \<up> k2, <r> @ Bk \<up> l2))
  else None)*)
 definition induce_F_from_tprog0 :: "tprog0 \<Rightarrow> nat \<Rightarrow> nat option" where
-"induce_F_from_tprog0 p inp = (if (\<exists>r k l m n. \<lbrace>\<lambda>tap. tap = (Bk \<up> k, <inp> @ Bk \<up> l)\<rbrace> p \<lbrace>\<lambda>tap. tap = (Bk \<up> m, <r::nat> @ Bk \<up> n)\<rbrace>)
-                               then Some (THE r. \<exists>k l m n. \<lbrace>\<lambda>tap. tap = (Bk \<up> k, <inp> @ Bk \<up> l)\<rbrace> p \<lbrace>\<lambda>tap. tap = (Bk \<up> m, <r::nat> @ Bk \<up> n)\<rbrace>)
+"induce_F_from_tprog0 p inp = (if (\<exists>r. \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <inp> @ Bk \<up> l)\<rbrace> p \<lbrace>\<lambda>tap. \<exists>k l. tap = (Bk \<up> k, <r::nat> @ Bk \<up> l)\<rbrace>)
+                               then Some (THE r. \<exists>k l. steps0 (1, ([], <inp>)) p (SOME n. is_final (steps0 (1, ([], <inp>)) p n)) = (0, (Bk \<up> k, <r> @ Bk \<up> l)))
                                else None)"
 
 (*For all possible numeral input tapes the Turing machines we are interested in return numeral output*)
 definition numeral_tm0 :: "tprog0 \<Rightarrow> bool" where
 "numeral_tm0 p = (let numeral_tape = \<lambda>tap. \<exists>k l (n::nat). tap = (Bk \<up> k, <n> @ Bk \<up> l)
-                  in \<lbrace>numeral_tape\<rbrace> p \<lbrace>numeral_tape\<rbrace>)"
-
+                  in \<lbrace>numeral_tape\<rbrace> p \<lbrace>numeral_tape\<rbrace> \<or> \<lbrace>numeral_tape\<rbrace> p \<up>)"
+                                               
 definition "numeral_composable_tm0 p \<equiv> composable_tm0 p \<and> numeral_tm0 p"
 
 lemma sq_num_comp_tm0: "\<lbrakk>numeral_composable_tm0 p1; numeral_composable_tm0 p2\<rbrakk> \<Longrightarrow> numeral_composable_tm0 (p1 |+| p2)"
-  by (meson Hoare_plus_halt numeral_composable_tm0_def numeral_tm0_def seq_tm_composable)
+  by (metis (no_types, lifting) Hoare_plus_halt Hoare_plus_unhalt Hoare_unhalt_def numeral_composable_tm0_def numeral_tm0_def seq_tm_composable seq_tm_steps)
 
 definition turing_F :: "(nat\<rightharpoonup>nat) set" where
 "turing_F = induce_F_from_tprog0 ` {p. numeral_composable_tm0 p}"
